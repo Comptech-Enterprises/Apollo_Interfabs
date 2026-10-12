@@ -42,7 +42,9 @@ export function Header({ items, userName, role }: { items: Item[]; userName: str
               key={i.href}
               href={i.href}
               aria-current={active(i.href) ? "page" : undefined}
-              className={`rounded-lg px-3 py-2 text-sm font-medium ${active(i.href) ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-100"}`}
+              className={`rounded-lg px-3 py-2 text-sm font-medium active:scale-95 active:bg-slate-200/70 transition-all duration-150 cursor-pointer ${
+                active(i.href) ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-100"
+              }`}
             >
               {i.label}
             </Link>
@@ -81,12 +83,17 @@ export function Header({ items, userName, role }: { items: Item[]; userName: str
                 key={i.href}
                 href={i.href}
                 aria-current={active(i.href) ? "page" : undefined}
-                className={`rounded-lg px-4 py-3 text-base font-medium ${active(i.href) ? "bg-brand-50 text-brand-700" : "text-slate-800 active:bg-slate-100"}`}
+                className={`rounded-lg px-4 py-3 text-base font-medium active:scale-[0.98] transition-all duration-150 ${
+                  active(i.href) ? "bg-brand-50 text-brand-700" : "text-slate-800 active:bg-slate-100"
+                }`}
               >
                 {i.label}
               </Link>
             ))}
-            <Link href="/account" className="rounded-lg px-4 py-3 text-base font-medium text-slate-800 active:bg-slate-100">
+            <Link
+              href="/account"
+              className="rounded-lg px-4 py-3 text-base font-medium text-slate-800 active:scale-[0.98] active:bg-slate-100 transition-all duration-150"
+            >
               Account ({userName})
             </Link>
             <form action={logoutAction} className="mt-2">

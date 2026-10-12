@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
+import { NavigationProgressBar } from "@/components/NavigationProgressBar";
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en-IN">
       <body className="min-h-dvh">
+        <NavigationProgressBar />
         {children}
         <Toaster position="top-center" richColors closeButton />
       </body>

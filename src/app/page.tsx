@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Logo, ContactLinks } from "@/components/Brand";
 import { LoginForm } from "./LoginForm";
 import { site } from "@/lib/site";
+import { getCurrentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Sign in",
   description: "Sign in to the Apollo Interfabs inventory portal to manage fabric stock, purchases and sales.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const user = await getCurrentUser();
+  if (user) redirect("/dashboard");
+
   return (
     <main className="flex min-h-dvh flex-col">
       <header className="mx-auto w-full max-w-5xl px-4 py-4 sm:px-6">
