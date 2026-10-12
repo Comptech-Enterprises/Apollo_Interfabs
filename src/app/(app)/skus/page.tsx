@@ -12,9 +12,19 @@ export const dynamic = "force-dynamic";
 export default async function SkuList({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   await requireManager();
   const { q } = await searchParams;
+  const tokens = q?.trim().split(/\s+/).filter(Boolean);
   const skus = await prisma.sku.findMany({
-    where: q?.trim()
-      ? { OR: [{ code: { contains: q.trim(), mode: "insensitive" } }, { fabricName: { contains: q.trim(), mode: "insensitive" } }] }
+    where: tokens && tokens.length > 0
+      ? {
+          AND: tokens.map((t) => ({
+            OR: [
+              { code: { contains: t, mode: "insensitive" } },
+              { fabricName: { contains: t, mode: "insensitive" } },
+              { fabricType: { contains: t, mode: "insensitive" } },
+              { colour: { contains: t, mode: "insensitive" } },
+            ],
+          })),
+        }
       : undefined,
     orderBy: { code: "asc" },
   });
@@ -23,8 +33,9 @@ export default async function SkuList({ searchParams }: { searchParams: Promise<
       <PageHeader title="SKUs" subtitle="Add SKUs, set prices and mark them active or inactive." actions={<Link href="/skus/new" className="btn-primary">Add SKU</Link>} />
       <form method="get" role="search" className="mb-4 flex gap-2">
         <label htmlFor="q" className="sr-only">Search SKUs</label>
-        <input id="q" name="q" defaultValue={q ?? ""} placeholder="Search code or fabric name" className="input" />
+        <input id="q" name="q" defaultValue={q ?? ""} placeholder="Search SKU code, fabric name or colour..." maxLength={100} autoComplete="off" className="input" />
         <button className="btn-secondary">Search</button>
+        {q && <Link href="/skus" className="btn-secondary">Clear</Link>}
       </form>
       {skus.length === 0 ? (
         <EmptyState title={q ? "No SKUs match your search" : "No SKUs yet"} body={q ? undefined : "Add your first SKU to get started."}>

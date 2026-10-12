@@ -22,12 +22,16 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
   const where: Prisma.SkuWhereInput = {};
   if (sp.q?.trim()) {
-    const q = sp.q.trim();
-    where.OR = [
-      { code: { contains: q, mode: "insensitive" } },
-      { fabricName: { contains: q, mode: "insensitive" } },
-      { otherIdentifiers: { contains: q, mode: "insensitive" } },
-    ];
+    const tokens = sp.q.trim().split(/\s+/).filter(Boolean);
+    where.AND = tokens.map((token) => ({
+      OR: [
+        { code: { contains: token, mode: "insensitive" } },
+        { fabricName: { contains: token, mode: "insensitive" } },
+        { fabricType: { contains: token, mode: "insensitive" } },
+        { colour: { contains: token, mode: "insensitive" } },
+        { otherIdentifiers: { contains: token, mode: "insensitive" } },
+      ],
+    }));
   }
   if (sp.type) where.fabricType = sp.type;
   if (sp.colour) where.colour = sp.colour;
@@ -81,7 +85,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       <form method="get" className="card mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6" role="search" aria-label="Filter inventory">
         <div className="sm:col-span-2">
           <label htmlFor="q" className="mb-1 block text-sm font-medium text-slate-700">Search</label>
-          <input id="q" name="q" defaultValue={sp.q ?? ""} placeholder="SKU code, fabric name..." className="input" />
+          <input id="q" name="q" defaultValue={sp.q ?? ""} placeholder="SKU code, fabric name..." maxLength={100} autoComplete="off" className="input" />
         </div>
         <Select id="type" label="Fabric type" value={sp.type} options={types} />
         <Select id="colour" label="Colour" value={sp.colour} options={colours} />

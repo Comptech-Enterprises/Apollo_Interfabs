@@ -52,16 +52,51 @@ export function SkuForm({ initial = emptySku, mode }: { initial?: SkuFormValues;
       {initial.id && <input type="hidden" name="id" value={initial.id} />}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Fabric name" name="fabricName" error={errors.fabricName}>
-          <input id="fabricName" name="fabricName" value={v.fabricName} onChange={set("fabricName")} required className="input" />
+          <input
+            id="fabricName"
+            name="fabricName"
+            value={v.fabricName}
+            onChange={set("fabricName")}
+            required
+            maxLength={100}
+            placeholder="e.g. Premium Cotton Cambric"
+            className="input"
+          />
         </Field>
         <Field label="Fabric type" name="fabricType" error={errors.fabricType} hint="e.g. Polyester, Cotton">
-          <input id="fabricType" name="fabricType" value={v.fabricType} onChange={set("fabricType")} required className="input" />
+          <input
+            id="fabricType"
+            name="fabricType"
+            value={v.fabricType}
+            onChange={set("fabricType")}
+            required
+            maxLength={50}
+            placeholder="e.g. Cotton"
+            className="input"
+          />
         </Field>
         <Field label="Colour" name="colour" error={errors.colour}>
-          <input id="colour" name="colour" value={v.colour} onChange={set("colour")} required className="input" />
+          <input
+            id="colour"
+            name="colour"
+            value={v.colour}
+            onChange={set("colour")}
+            required
+            maxLength={50}
+            placeholder="e.g. Navy Blue"
+            className="input"
+          />
         </Field>
         <Field label="Pattern" name="pattern" error={errors.pattern} hint="e.g. Plain, Striped (optional)">
-          <input id="pattern" name="pattern" value={v.pattern} onChange={set("pattern")} className="input" />
+          <input
+            id="pattern"
+            name="pattern"
+            value={v.pattern}
+            onChange={set("pattern")}
+            maxLength={50}
+            placeholder="e.g. Plain, Checked"
+            className="input"
+          />
         </Field>
       </div>
       <Field
@@ -79,19 +114,55 @@ export function SkuForm({ initial = emptySku, mode }: { initial?: SkuFormValues;
             setV({ ...v, code: e.target.value.toUpperCase() });
           }}
           required
+          maxLength={40}
           autoCapitalize="characters"
+          placeholder="e.g. BLK-POLY-JUN26"
           className="input font-mono"
         />
       </Field>
       <Field label="Other identifiers" name="otherIdentifiers" error={errors.otherIdentifiers} hint="Width, GSM, lot number, notes (optional)">
-        <input id="otherIdentifiers" name="otherIdentifiers" value={v.otherIdentifiers} onChange={set("otherIdentifiers")} className="input" />
+        <input
+          id="otherIdentifiers"
+          name="otherIdentifiers"
+          value={v.otherIdentifiers}
+          onChange={set("otherIdentifiers")}
+          maxLength={300}
+          placeholder="e.g. Width 58 inches, 140 GSM"
+          className="input"
+        />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Selling price per metre (₹)" name="sellingPricePerMetre" error={errors.sellingPricePerMetre}>
-          <input id="sellingPricePerMetre" name="sellingPricePerMetre" inputMode="decimal" value={v.sellingPricePerMetre} onChange={set("sellingPricePerMetre")} required className="input" />
+          <input
+            id="sellingPricePerMetre"
+            name="sellingPricePerMetre"
+            type="number"
+            step="0.01"
+            min="0.01"
+            max="99999999"
+            inputMode="decimal"
+            value={v.sellingPricePerMetre}
+            onChange={set("sellingPricePerMetre")}
+            placeholder="e.g. 240.00"
+            required
+            className="input"
+          />
         </Field>
         <Field label="Low stock threshold (metres)" name="lowStockThreshold" error={errors.lowStockThreshold} hint="Alert when stock falls to this level. 0 turns the alert off.">
-          <input id="lowStockThreshold" name="lowStockThreshold" inputMode="decimal" value={v.lowStockThreshold} onChange={set("lowStockThreshold")} required className="input" />
+          <input
+            id="lowStockThreshold"
+            name="lowStockThreshold"
+            type="number"
+            step="0.01"
+            min="0"
+            max="99999999"
+            inputMode="decimal"
+            value={v.lowStockThreshold}
+            onChange={set("lowStockThreshold")}
+            placeholder="e.g. 25"
+            required
+            className="input"
+          />
         </Field>
       </div>
       <SubmitButton className="btn-primary w-full sm:w-auto">{mode === "create" ? "Create SKU" : "Save changes"}</SubmitButton>

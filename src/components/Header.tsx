@@ -75,7 +75,7 @@ export function Header({ items, userName, role }: { items: Item[]; userName: str
 
       {open && (
         <div id="mobile-menu" className="fixed inset-x-0 top-[61px] bottom-0 z-50 overflow-y-auto bg-white lg:hidden">
-          <nav aria-label="Mobile" className="flex flex-col gap-1 p-4">
+          <nav aria-label="Mobile" className="flex flex-col gap-1 p-4 pb-24">
             {items.map((i) => (
               <Link
                 key={i.href}

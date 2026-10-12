@@ -28,7 +28,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
   const [rows, count, skus] = await Promise.all([
     prisma.stockIn.findMany({ where, include: { sku: true }, orderBy: [{ purchaseDate: "desc" }, { createdAt: "desc" }], skip: (page - 1) * PAGE, take: PAGE }),
     prisma.stockIn.count({ where }),
-    prisma.sku.findMany({ select: { id: true, code: true }, orderBy: { code: "asc" } }),
+    prisma.sku.findMany({ select: { id: true, code: true, fabricName: true }, orderBy: { code: "asc" } }),
   ]);
   const filtered = !!(sp.sku || sp.supplier || sp.from || sp.to);
 
@@ -37,12 +37,17 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
       <PageHeader title="Purchase log" subtitle="Every stock arrival, newest first." actions={<Link href="/stock-in/new" className="btn-primary">Record stock in</Link>} />
       <form method="get" role="search" className="card mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div>
-          <label htmlFor="sku" className="mb-1 block text-sm font-medium">SKU</label>
-          <select id="sku" name="sku" defaultValue={sp.sku ?? ""} className="input"><option value="">All</option>{skus.map((s) => <option key={s.id} value={s.id}>{s.code}</option>)}</select>
+          <label htmlFor="sku" className="mb-1 block text-sm font-medium">SKU / Fabric</label>
+          <select id="sku" name="sku" defaultValue={sp.sku ?? ""} className="input">
+            <option value="">All SKUs</option>
+            {skus.map((s) => (
+              <option key={s.id} value={s.id}>{s.code} - {s.fabricName}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label htmlFor="supplier" className="mb-1 block text-sm font-medium">Supplier</label>
-          <input id="supplier" name="supplier" defaultValue={sp.supplier ?? ""} className="input" />
+          <input id="supplier" name="supplier" defaultValue={sp.supplier ?? ""} maxLength={100} placeholder="Filter by supplier" className="input" />
         </div>
         <div>
           <label htmlFor="from" className="mb-1 block text-sm font-medium">From</label>

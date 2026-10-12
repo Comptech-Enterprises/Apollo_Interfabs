@@ -28,7 +28,7 @@ export default async function SalesLog({ searchParams }: { searchParams: Promise
   const [rows, count, skus] = await Promise.all([
     prisma.sale.findMany({ where, include: { sku: true }, orderBy: [{ saleDate: "desc" }, { createdAt: "desc" }], skip: (page - 1) * PAGE, take: PAGE }),
     prisma.sale.count({ where }),
-    prisma.sku.findMany({ select: { id: true, code: true }, orderBy: { code: "asc" } }),
+    prisma.sku.findMany({ select: { id: true, code: true, fabricName: true }, orderBy: { code: "asc" } }),
   ]);
   const filtered = !!(sp.sku || sp.buyer || sp.from || sp.to);
 
@@ -37,12 +37,17 @@ export default async function SalesLog({ searchParams }: { searchParams: Promise
       <PageHeader title="Sales log" subtitle="Every sale, newest first." />
       <form method="get" role="search" className="card mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div>
-          <label htmlFor="sku" className="mb-1 block text-sm font-medium">SKU</label>
-          <select id="sku" name="sku" defaultValue={sp.sku ?? ""} className="input"><option value="">All</option>{skus.map((s) => <option key={s.id} value={s.id}>{s.code}</option>)}</select>
+          <label htmlFor="sku" className="mb-1 block text-sm font-medium">SKU / Fabric</label>
+          <select id="sku" name="sku" defaultValue={sp.sku ?? ""} className="input">
+            <option value="">All SKUs</option>
+            {skus.map((s) => (
+              <option key={s.id} value={s.id}>{s.code} - {s.fabricName}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label htmlFor="buyer" className="mb-1 block text-sm font-medium">Buyer</label>
-          <input id="buyer" name="buyer" defaultValue={sp.buyer ?? ""} className="input" />
+          <input id="buyer" name="buyer" defaultValue={sp.buyer ?? ""} maxLength={100} placeholder="Filter by buyer" className="input" />
         </div>
         <div>
           <label htmlFor="from" className="mb-1 block text-sm font-medium">From</label>

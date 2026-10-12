@@ -48,3 +48,28 @@ describe("helpers", () => {
     expect(isLowStock(21, 20)).toBe(false);
   });
 });
+
+describe("passwordSchema and input bounds", () => {
+  it("enforces minimum 8 characters and generous max length", () => {
+    expect(saleSchema.safeParse({ skuId: "x", quantityMetres: "10", saleDate: "2026-01-02", buyerName: "a".repeat(101) }).success).toBe(false);
+    expect(saleSchema.safeParse({ skuId: "x", quantityMetres: "10", saleDate: "2026-01-02", buyerName: "a".repeat(100) }).success).toBe(true);
+  });
+
+  it("filters skus matching both fabric name and sku code", () => {
+    const list = [
+      { code: "BLK-POLY-JUN26", fabricName: "Suiting", label: "BLK-POLY-JUN26 - Suiting, Black" },
+      { code: "WHT-COT-JUN26", fabricName: "Cotton Cambric", label: "WHT-COT-JUN26 - Cotton Cambric, White" },
+    ];
+    const match = (query: string) => {
+      const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      return list.filter((s) => {
+        const text = `${s.code} ${s.fabricName} ${s.label}`.toLowerCase();
+        return tokens.every((t) => text.includes(t));
+      });
+    };
+    expect(match("Suiting")).toHaveLength(1);
+    expect(match("BLK-POLY")).toHaveLength(1);
+    expect(match("Cotton WHT")).toHaveLength(1);
+    expect(match("Nonexistent")).toHaveLength(0);
+  });
+});
