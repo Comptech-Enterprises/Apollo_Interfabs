@@ -41,7 +41,7 @@ export default async function SkuList({ searchParams }: { searchParams: Promise<
                   {isLowStock(s.currentStock, s.lowStockThreshold) && <LowStockBadge />}
                 </div>
               </div>
-              <p className="mt-1 break-words text-sm text-slate-600">{s.fabricName} · {s.fabricType} · {s.colour}{s.pattern ? ` · ${s.pattern}` : ""}</p>
+              <p className="mt-1 break-words text-sm text-slate-600">{s.fabricName} - {s.fabricType} - {s.colour}{s.pattern ? ` - ${s.pattern}` : ""}</p>
               <dl className="mt-3 grid grid-cols-2 gap-1 text-sm">
                 <dt className="text-slate-500">Price / m</dt><dd className="text-right">{formatPrice(s.sellingPricePerMetre)}</dd>
                 <dt className="text-slate-500">In stock</dt><dd className="text-right font-semibold">{formatMetres(s.currentStock)}</dd>

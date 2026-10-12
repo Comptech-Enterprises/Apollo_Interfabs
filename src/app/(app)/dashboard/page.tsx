@@ -81,7 +81,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       <form method="get" className="card mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6" role="search" aria-label="Filter inventory">
         <div className="sm:col-span-2">
           <label htmlFor="q" className="mb-1 block text-sm font-medium text-slate-700">Search</label>
-          <input id="q" name="q" defaultValue={sp.q ?? ""} placeholder="SKU code, fabric name…" className="input" />
+          <input id="q" name="q" defaultValue={sp.q ?? ""} placeholder="SKU code, fabric name..." className="input" />
         </div>
         <Select id="type" label="Fabric type" value={sp.type} options={types} />
         <Select id="colour" label="Colour" value={sp.colour} options={colours} />
@@ -116,7 +116,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       ) : (
         <>
           <p className="mb-2 text-sm text-slate-600">
-            {skus.length} SKU{skus.length > 1 ? "s" : ""} · {formatMetres(totalMetres)} in stock
+            {skus.length} SKU{skus.length > 1 ? "s" : ""} - {formatMetres(totalMetres)} in stock
           </p>
 
           {/* Desktop table */}
@@ -146,7 +146,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                       <td className="td">{s.fabricName}</td>
                       <td className="td">{s.fabricType}</td>
                       <td className="td">{s.colour}</td>
-                      <td className="td">{s.pattern ?? "—"}</td>
+                      <td className="td">{s.pattern ?? "-"}</td>
                       <td className="td text-right">{formatPrice(s.sellingPricePerMetre)}</td>
                       <td className="td text-right font-semibold">{formatMetres(s.currentStock)}</td>
                       <td className="td space-x-1">
@@ -182,7 +182,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                   <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
                     <dt className="text-slate-500">Type</dt><dd className="text-right">{s.fabricType}</dd>
                     <dt className="text-slate-500">Colour</dt><dd className="text-right">{s.colour}</dd>
-                    <dt className="text-slate-500">Pattern</dt><dd className="text-right">{s.pattern ?? "—"}</dd>
+                    <dt className="text-slate-500">Pattern</dt><dd className="text-right">{s.pattern ?? "-"}</dd>
                     <dt className="text-slate-500">Price / m</dt><dd className="text-right">{formatPrice(s.sellingPricePerMetre)}</dd>
                     <dt className="text-slate-500">In stock</dt><dd className="text-right font-semibold">{formatMetres(s.currentStock)}</dd>
                   </dl>

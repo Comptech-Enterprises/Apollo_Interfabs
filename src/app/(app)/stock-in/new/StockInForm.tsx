@@ -17,7 +17,7 @@ export function StockInForm({ skus, today, initialSku }: { skus: { id: string; l
     <form ref={formRef} action={formAction} className="card space-y-4" noValidate>
       <Field label="SKU" name="skuId" error={errors.skuId}>
         <select id="skuId" name="skuId" defaultValue={initialSku} required className="input">
-          <option value="">Select a SKU…</option>
+          <option value="">Select a SKU...</option>
           {skus.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
       </Field>

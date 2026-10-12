@@ -89,7 +89,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
                   <span className="shrink-0 text-sm text-slate-600">{formatDate(r.purchaseDate)}</span>
                 </div>
                 <p className="mt-1 break-words text-sm">{r.supplierName}</p>
-                <p className="mt-1 text-sm">{formatMetres(r.quantityMetres)} · {formatPrice(r.costPricePerMetre)}/m</p>
+                <p className="mt-1 text-sm">{formatMetres(r.quantityMetres)} - {formatPrice(r.costPricePerMetre)}/m</p>
                 <div className="mt-3">{r.voidedAt ? <VoidedBadge /> : <VoidButton id={r.id} kind="stockin" label={`${r.sku.code}, ${formatMetres(r.quantityMetres)}`} />}</div>
               </li>
             ))}

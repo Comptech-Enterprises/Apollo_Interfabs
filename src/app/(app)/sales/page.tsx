@@ -74,7 +74,7 @@ export default async function SalesLog({ searchParams }: { searchParams: Promise
                     <td className="td font-mono font-semibold"><Link href={`/skus/${r.skuId}`} className="hover:underline">{r.sku.code}</Link></td>
                     <td className="td text-right">{formatMetres(r.quantityMetres)}</td>
                     <td className="td text-right">{formatPrice(r.pricePerMetre)}</td>
-                    <td className="td">{r.buyerName ?? "—"}</td>
+                    <td className="td">{r.buyerName ?? "-"}</td>
                     <td className="td text-right">{r.voidedAt ? <VoidedBadge /> : <VoidButton id={r.id} kind="sale" label={`${r.sku.code}, ${formatMetres(r.quantityMetres)}`} />}</td>
                   </tr>
                 ))}
@@ -89,7 +89,7 @@ export default async function SalesLog({ searchParams }: { searchParams: Promise
                   <span className="shrink-0 text-sm text-slate-600">{formatDate(r.saleDate)}</span>
                 </div>
                 <p className="mt-1 text-sm">{formatMetres(r.quantityMetres)} at {formatPrice(r.pricePerMetre)}/m</p>
-                <p className="break-words text-sm text-slate-600">Buyer: {r.buyerName ?? "—"}</p>
+                <p className="break-words text-sm text-slate-600">Buyer: {r.buyerName ?? "-"}</p>
                 <div className="mt-3">{r.voidedAt ? <VoidedBadge /> : <VoidButton id={r.id} kind="sale" label={`${r.sku.code}, ${formatMetres(r.quantityMetres)}`} />}</div>
               </li>
             ))}

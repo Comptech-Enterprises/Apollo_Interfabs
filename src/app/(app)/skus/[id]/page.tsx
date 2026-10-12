@@ -29,7 +29,7 @@ export default async function SkuDetail({ params }: { params: Promise<{ id: stri
     <>
       <PageHeader
         title={s.code}
-        subtitle={`${s.fabricName} · ${s.fabricType} · ${s.colour}${s.pattern ? ` · ${s.pattern}` : ""}`}
+        subtitle={`${s.fabricName} - ${s.fabricType} - ${s.colour}${s.pattern ? ` - ${s.pattern}` : ""}`}
         actions={
           <>
             <Link href={`/stock-in/new?sku=${s.id}`} className="btn-primary">Record stock in</Link>
@@ -57,8 +57,8 @@ export default async function SkuDetail({ params }: { params: Promise<{ id: stri
           {s.stockIns.map((p) => (
             <li key={p.id} className={`card flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between ${p.voidedAt ? "opacity-60" : ""}`}>
               <div className="min-w-0 text-sm">
-                <p className="font-semibold">{formatDate(p.purchaseDate)} · {formatMetres(p.quantityMetres)} {p.voidedAt && <VoidedBadge />}</p>
-                <p className="break-words text-slate-600">Supplier: {p.supplierName} · Cost: {formatPrice(p.costPricePerMetre)}/m</p>
+                <p className="font-semibold">{formatDate(p.purchaseDate)} - {formatMetres(p.quantityMetres)} {p.voidedAt && <VoidedBadge />}</p>
+                <p className="break-words text-slate-600">Supplier: {p.supplierName} - Cost: {formatPrice(p.costPricePerMetre)}/m</p>
                 {p.voidedAt && <p className="text-xs text-slate-500">Voided {formatDateTime(p.voidedAt)}: {p.voidReason}</p>}
               </div>
               {!p.voidedAt && <VoidButton id={p.id} kind="stockin" label={`${formatDate(p.purchaseDate)}, ${formatMetres(p.quantityMetres)} from ${p.supplierName}`} />}
@@ -75,8 +75,8 @@ export default async function SkuDetail({ params }: { params: Promise<{ id: stri
           {s.sales.map((x) => (
             <li key={x.id} className={`card flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between ${x.voidedAt ? "opacity-60" : ""}`}>
               <div className="min-w-0 text-sm">
-                <p className="font-semibold">{formatDate(x.saleDate)} · {formatMetres(x.quantityMetres)} at {formatPrice(x.pricePerMetre)}/m {x.voidedAt && <VoidedBadge />}</p>
-                <p className="break-words text-slate-600">Buyer: {x.buyerName ?? "—"}</p>
+                <p className="font-semibold">{formatDate(x.saleDate)} - {formatMetres(x.quantityMetres)} at {formatPrice(x.pricePerMetre)}/m {x.voidedAt && <VoidedBadge />}</p>
+                <p className="break-words text-slate-600">Buyer: {x.buyerName ?? "-"}</p>
                 {x.voidedAt && <p className="text-xs text-slate-500">Voided {formatDateTime(x.voidedAt)}: {x.voidReason}</p>}
               </div>
               {!x.voidedAt && <VoidButton id={x.id} kind="sale" label={`${formatDate(x.saleDate)}, ${formatMetres(x.quantityMetres)}`} />}
@@ -90,7 +90,7 @@ export default async function SkuDetail({ params }: { params: Promise<{ id: stri
         {s.prices.map((p) => (
           <li key={p.id} className="flex justify-between gap-3 py-2 first:pt-0 last:pb-0">
             <span>{formatDateTime(p.changedAt)}</span>
-            <span>{p.oldPrice ? `${formatPrice(p.oldPrice)} → ` : "Set to "}<strong>{formatPrice(p.newPrice)}</strong></span>
+            <span>{p.oldPrice ? `${formatPrice(p.oldPrice)} -> ` : "Set to "}<strong>{formatPrice(p.newPrice)}</strong></span>
           </li>
         ))}
       </ul>

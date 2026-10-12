@@ -19,7 +19,7 @@ export default async function NewStockIn({ searchParams }: { searchParams: Promi
         <StockInForm
           today={todayIST()}
           initialSku={skus.some((s) => s.id === sku) ? sku! : ""}
-          skus={skus.map((s) => ({ id: s.id, label: `${s.code} — ${s.fabricName}, ${s.colour}${s.active ? "" : " (inactive)"}` }))}
+          skus={skus.map((s) => ({ id: s.id, label: `${s.code} - ${s.fabricName}, ${s.colour}${s.active ? "" : " (inactive)"}` }))}
         />
       </div>
     </>

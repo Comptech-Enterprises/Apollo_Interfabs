@@ -133,7 +133,7 @@ async function run() {
     console.log("  PASS: Custom 404 page rendered correctly for non-existent route.");
 
     await prisma.$disconnect();
-    console.log("\nALL HTTP AND RBAC INTEGRATION TESTS PASSED SUCCESSFULLY! 🎉\n");
+    console.log("\nALL HTTP AND RBAC INTEGRATION TESTS PASSED SUCCESSFULLY!\n");
   } finally {
     proc.kill("SIGTERM");
   }

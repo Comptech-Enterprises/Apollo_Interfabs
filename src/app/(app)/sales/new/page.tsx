@@ -23,7 +23,7 @@ export default async function NewSale() {
           skus={skus.map((s) => ({
             id: s.id,
             code: s.code,
-            label: `${s.code} — ${s.fabricName}, ${s.colour}${s.pattern ? `, ${s.pattern}` : ""}`,
+            label: `${s.code} - ${s.fabricName}, ${s.colour}${s.pattern ? `, ${s.pattern}` : ""}`,
             price: Number(s.sellingPricePerMetre),
             stock: Number(s.currentStock),
           }))}

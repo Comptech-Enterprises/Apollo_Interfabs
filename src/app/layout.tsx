@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
-  title: { default: `${site.name} · ${site.product}`, template: `%s · ${site.name}` },
+  title: { default: `${site.name} - ${site.product}`, template: `%s - ${site.name}` },
   description: site.description,
   manifest: "/manifest.webmanifest",
   robots: { index: false, follow: false }, // private business data

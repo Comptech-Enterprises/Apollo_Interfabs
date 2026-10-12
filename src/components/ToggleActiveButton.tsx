@@ -28,7 +28,7 @@ export function ToggleActiveButton({
         });
       }}
     >
-      {pending ? "Saving…" : active ? `Mark inactive` : `Mark active`}
+      {pending ? "Saving..." : active ? `Mark inactive` : `Mark active`}
     </button>
   );
 }

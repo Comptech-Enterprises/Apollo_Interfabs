@@ -10,7 +10,7 @@ export function SubmitButton({ children, pending: _p, className = "btn-primary",
   const { pending } = useFormStatus();
   return (
     <button type="submit" disabled={pending} className={className} {...rest}>
-      {pending ? "Saving…" : children}
+      {pending ? "Saving..." : children}
     </button>
   );
 }
