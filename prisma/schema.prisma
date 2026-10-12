@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MANAGER
+  SALES
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  role               Role
+  active             Boolean  @default(true)
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+}
+
+model Sku {
+  id                   String        @id @default(cuid())
+  code                 String        @unique
+  fabricName           String
+  fabricType           String
+  colour               String
+  pattern              String?
+  otherIdentifiers     String?
+  sellingPricePerMetre Decimal       @db.Decimal(10, 2)
+  lowStockThreshold    Decimal       @default(0) @db.Decimal(10, 2)
+  currentStock         Decimal       @default(0) @db.Decimal(12, 2)
+  active               Boolean       @default(true)
+  createdById          String
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  stockIns             StockIn[]
+  sales                Sale[]
+  prices               PriceChange[]
+
+  @@index([fabricType, colour])
+}
+
+model StockIn {
+  id                String    @id @default(cuid())
+  skuId             String
+  sku               Sku       @relation(fields: [skuId], references: [id])
+  supplierName      String
+  quantityMetres    Decimal   @db.Decimal(12, 2)
+  purchaseDate      DateTime  @db.Date
+  costPricePerMetre Decimal   @db.Decimal(10, 2)
+  createdById       String
+  createdAt         DateTime  @default(now())
+  voidedAt          DateTime?
+  voidedById        String?
+  voidReason        String?
+
+  @@index([skuId, purchaseDate])
+}
+
+model Sale {
+  id             String    @id @default(cuid())
+  skuId          String
+  sku            Sku       @relation(fields: [skuId], references: [id])
+  quantityMetres Decimal   @db.Decimal(12, 2)
+  pricePerMetre  Decimal   @db.Decimal(10, 2)
+  saleDate       DateTime  @db.Date
+  buyerName      String?
+  createdById    String
+  createdAt      DateTime  @default(now())
+  voidedAt       DateTime?
+  voidedById     String?
+  voidReason     String?
+
+  @@index([skuId, saleDate])
+}
+
+model PriceChange {
+  id          String   @id @default(cuid())
+  skuId       String
+  sku         Sku      @relation(fields: [skuId], references: [id])
+  oldPrice    Decimal? @db.Decimal(10, 2)
+  newPrice    Decimal  @db.Decimal(10, 2)
+  changedById String
+  changedAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  entity    String
+  entityId  String
+  details   Json?
+  createdAt DateTime @default(now())
+}
