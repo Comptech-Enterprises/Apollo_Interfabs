@@ -7,8 +7,8 @@ Custom inventory management portal designed and built for Apollo Interfabs by Co
 ## Live Links and Deployment
 
 - **Vercel Production (Free Tier)**: [https://apollo-interfabs.vercel.app](https://apollo-interfabs.vercel.app)
-- **One-Click Deploy to Vercel**: [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FComptech-Enterprises%2FApollo_Interfabs&env=DATABASE_URL,AUTH_SECRET,NEXT_PUBLIC_SITE_URL&project-name=apollo-interfabs)
-- **Live Preview (Cloudflare Tunnel)**: [https://sol-strategy-ana-asking.trycloudflare.com](https://sol-strategy-ana-asking.trycloudflare.com)
+- **One-Click Deploy to Vercel**: [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FComptech-Enterprises%2FApollo_Interfabs&env=DATABASE_URL,DIRECT_URL,AUTH_SECRET,NEXT_PUBLIC_SITE_URL&project-name=apollo-interfabs)
+- **Live Preview (Cloudflare Tunnel)**: [https://lucky-developer-asian-mainstream.trycloudflare.com](https://lucky-developer-asian-mainstream.trycloudflare.com)
 
 ### Pre-Configured Test Accounts
 
