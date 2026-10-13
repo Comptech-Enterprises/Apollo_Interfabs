@@ -44,6 +44,7 @@ export function PasswordInput({
         value={value}
         onChange={onChange}
         className={`${className} pr-12`}
+        suppressHydrationWarning
       />
       <button
         type="button"

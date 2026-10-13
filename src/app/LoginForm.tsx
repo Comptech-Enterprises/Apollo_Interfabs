@@ -9,7 +9,7 @@ export function LoginForm() {
   return (
     <form action={formAction} className="mt-6 space-y-4" noValidate>
       <Field label="Email" name="email">
-        <input id="email" name="email" type="email" autoComplete="username" required maxLength={120} className="input" />
+        <input id="email" name="email" type="email" autoComplete="username" required maxLength={120} className="input" suppressHydrationWarning />
       </Field>
       <Field label="Password" name="password">
         <PasswordInput id="password" name="password" autoComplete="current-password" required maxLength={100} />

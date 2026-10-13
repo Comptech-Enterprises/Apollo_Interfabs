@@ -21,8 +21,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-IN">
-      <body className="min-h-dvh">
+    <html lang="en-IN" suppressHydrationWarning>
+      <body className="min-h-dvh" suppressHydrationWarning>
         <NavigationProgressBar />
         {children}
         <Toaster position="top-center" richColors closeButton />
