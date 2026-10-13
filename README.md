@@ -6,9 +6,10 @@ Custom inventory management portal designed and built for Apollo Interfabs by Co
 
 ## Live Links and Deployment
 
-- **Vercel Production (Free Tier)**: [https://apollo-interfabs.vercel.app](https://apollo-interfabs.vercel.app)
-- **One-Click Deploy to Vercel**: [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FComptech-Enterprises%2FApollo_Interfabs&env=DATABASE_URL,DIRECT_URL,AUTH_SECRET,NEXT_PUBLIC_SITE_URL&project-name=apollo-interfabs)
+- **Vercel Production (Live)**: [https://apollo-interfabs-bir-kji1.vercel.app](https://apollo-interfabs-bir-kji1.vercel.app)
 - **Live Preview (Cloudflare Tunnel)**: [https://lucky-developer-asian-mainstream.trycloudflare.com](https://lucky-developer-asian-mainstream.trycloudflare.com)
+- **Personal Repository**: [https://github.com/kubir21/Apollo_Interfabs-_bir](https://github.com/kubir21/Apollo_Interfabs-_bir)
+- **Organization Repository**: [https://github.com/Comptech-Enterprises/Apollo_Interfabs](https://github.com/Comptech-Enterprises/Apollo_Interfabs)
 
 ### Pre-Configured Test Accounts
 
@@ -224,7 +225,7 @@ node --env-file=.env tests/http-verify.mjs
 2. Under **Environment Variables**, provide:
    - `DATABASE_URL`: Cloud PostgreSQL connection string from Step 1.
    - `AUTH_SECRET`: A 32-byte hexadecimal random string.
-   - `NEXT_PUBLIC_SITE_URL`: Production URL (for example, `https://apollo-interfabs.vercel.app`).
+   - `NEXT_PUBLIC_SITE_URL`: Production URL (`https://apollo-interfabs-bir-kji1.vercel.app`).
 3. Click **Deploy**. Vercel will automatically run `prisma generate && next build`.
 
 ### Step 3: Run Migrations and Seed Database
