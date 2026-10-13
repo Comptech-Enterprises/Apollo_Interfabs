@@ -4,6 +4,22 @@ Custom inventory management portal designed and built for Apollo Interfabs by Co
 
 ---
 
+## Live Links and Deployment
+
+- **Vercel Production (Free Tier)**: [https://apollo-interfabs.vercel.app](https://apollo-interfabs.vercel.app)
+- **One-Click Deploy to Vercel**: [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FComptech-Enterprises%2FApollo_Interfabs&env=DATABASE_URL,AUTH_SECRET,NEXT_PUBLIC_SITE_URL&project-name=apollo-interfabs)
+- **Live Preview (Cloudflare Tunnel)**: [https://sol-strategy-ana-asking.trycloudflare.com](https://sol-strategy-ana-asking.trycloudflare.com)
+
+### Pre-Configured Test Accounts
+
+| Role | Email | Password |
+|---|---|---|
+| Manager | `manager1@example.com` | `ChangeMe#2026` |
+| Manager | `manager2@example.com` | `ChangeMe#2026` |
+| Sales Staff | `sales@example.com` | `ChangeMe#2026` |
+
+---
+
 ## Overview and Key Features
 
 1. **SKU and Product Management**
@@ -196,20 +212,27 @@ node --env-file=.env tests/http-verify.mjs
 
 ---
 
-## Production Deployment
+## Production Deployment (Vercel Free Tier)
 
-1. Provision a managed PostgreSQL instance (e.g., Neon, Supabase, Render, AWS RDS, or self-hosted PostgreSQL).
-2. Configure environment variables (`DATABASE_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_SITE_URL`) on your hosting platform (Vercel, Render, Railway, or VPS).
-3. Execute database migrations in your deployment pipeline:
-   ```bash
-   npx prisma migrate deploy
-   ```
-4. Build and start the production application:
-   ```bash
-   npm run build
-   npm start
-   ```
-5. Bind custom domain name provided by Apollo Interfabs and configure SSL/TLS certificates.
+### Step 1: Provision Cloud Database (Free Tier)
+1. Create a free PostgreSQL database on [Neon](https://neon.tech) or [Supabase](https://supabase.com).
+2. Copy the connection string format:
+   `postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require`
+
+### Step 2: Deploy to Vercel
+1. Import the repository `Comptech-Enterprises/Apollo_Interfabs` at [vercel.com/new](https://vercel.com/new).
+2. Under **Environment Variables**, provide:
+   - `DATABASE_URL`: Cloud PostgreSQL connection string from Step 1.
+   - `AUTH_SECRET`: A 32-byte hexadecimal random string.
+   - `NEXT_PUBLIC_SITE_URL`: Production URL (for example, `https://apollo-interfabs.vercel.app`).
+3. Click **Deploy**. Vercel will automatically run `prisma generate && next build`.
+
+### Step 3: Run Migrations and Seed Database
+Run the schema migrations and initial user seed against your cloud database:
+```bash
+DATABASE_URL="<your-cloud-database-url>" npx prisma migrate deploy
+DATABASE_URL="<your-cloud-database-url>" npm run db:seed
+```
 
 ---
 
