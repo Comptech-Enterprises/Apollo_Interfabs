@@ -17,9 +17,9 @@ async function reset() {
   const hash = await bcrypt.hash(pw, 12);
 
   const users = [
-    { name: "Manager One", email: process.env.SEED_MANAGER1_EMAIL!, role: "MANAGER" as const },
-    { name: "Manager Two", email: process.env.SEED_MANAGER2_EMAIL!, role: "MANAGER" as const },
-    { name: "Sales Person", email: process.env.SEED_SALES_EMAIL!, role: "SALES" as const },
+    { name: "Anil", username: "anil", email: process.env.SEED_MANAGER1_EMAIL!, role: "MANAGER" as const },
+    { name: "Rahul", username: "rahul", email: process.env.SEED_MANAGER2_EMAIL!, role: "MANAGER" as const },
+    { name: "Sales Person", username: "sales", email: process.env.SEED_SALES_EMAIL!, role: "SALES" as const },
   ];
 
   for (const u of users) {
@@ -27,6 +27,7 @@ async function reset() {
     await prisma.user.create({
       data: {
         name: u.name,
+        username: u.username,
         email: u.email.toLowerCase(),
         role: u.role,
         passwordHash: hash,
