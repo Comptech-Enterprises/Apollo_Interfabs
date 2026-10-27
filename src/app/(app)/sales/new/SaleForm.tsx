@@ -5,7 +5,7 @@ import { recordSaleAction } from "@/actions/stock";
 import { Field, SubmitButton, useToastAction } from "@/components/ui";
 import { formatMetres, formatPrice } from "@/lib/format";
 
-type Sku = { id: string; code: string; fabricName?: string; colour?: string; label: string; price: number; stock: number };
+type Sku = { id: string; code: string; fabricName?: string; colour?: string; otherIdentifiers?: string | null; label: string; price: number; stock: number };
 
 export function SaleForm({ skus, today }: { skus: Sku[]; today: string }) {
   const [skuId, setSkuId] = useState("");
@@ -25,7 +25,7 @@ export function SaleForm({ skus, today }: { skus: Sku[]; today: string }) {
     if (tokens.length === 0) return skus;
     return skus.filter((s) => {
       if (s.id === skuId) return true;
-      const haystack = `${s.code} ${s.fabricName ?? ""} ${s.colour ?? ""} ${s.label}`.toLowerCase();
+      const haystack = `${s.code} ${s.fabricName ?? ""} ${s.colour ?? ""} ${s.otherIdentifiers ?? ""} ${s.label}`.toLowerCase();
       return tokens.every((t) => haystack.includes(t));
     });
   }, [skus, filter, skuId]);

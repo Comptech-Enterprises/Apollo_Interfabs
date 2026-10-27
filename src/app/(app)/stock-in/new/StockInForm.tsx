@@ -5,7 +5,7 @@ import Link from "next/link";
 import { recordStockInAction } from "@/actions/stock";
 import { Field, SubmitButton, useToastAction } from "@/components/ui";
 
-type SkuOption = { id: string; code?: string; fabricName?: string; label: string };
+type SkuOption = { id: string; code?: string; fabricName?: string; otherIdentifiers?: string | null; label: string };
 
 export function StockInForm({
   skus,
@@ -31,7 +31,7 @@ export function StockInForm({
     if (tokens.length === 0) return skus;
     return skus.filter((s) => {
       if (s.id === skuId) return true;
-      const haystack = `${s.code ?? ""} ${s.fabricName ?? ""} ${s.label}`.toLowerCase();
+      const haystack = `${s.code ?? ""} ${s.fabricName ?? ""} ${s.otherIdentifiers ?? ""} ${s.label}`.toLowerCase();
       return tokens.every((t) => haystack.includes(t));
     });
   }, [skus, filter, skuId]);

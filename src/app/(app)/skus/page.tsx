@@ -22,6 +22,8 @@ export default async function SkuList({ searchParams }: { searchParams: Promise<
               { fabricName: { contains: t, mode: "insensitive" } },
               { fabricType: { contains: t, mode: "insensitive" } },
               { colour: { contains: t, mode: "insensitive" } },
+              { pattern: { contains: t, mode: "insensitive" } },
+              { otherIdentifiers: { contains: t, mode: "insensitive" } },
             ],
           })),
         }
@@ -33,7 +35,7 @@ export default async function SkuList({ searchParams }: { searchParams: Promise<
       <PageHeader title="SKUs" subtitle="Add SKUs, set prices and mark them active or inactive." actions={<Link href="/skus/new" className="btn-primary">Add SKU</Link>} />
       <form method="get" role="search" className="mb-4 flex gap-2">
         <label htmlFor="q" className="sr-only">Search SKUs</label>
-        <input id="q" name="q" defaultValue={q ?? ""} placeholder="Search SKU code, fabric name or colour..." maxLength={100} autoComplete="off" className="input" />
+        <input id="q" name="q" defaultValue={q ?? ""} placeholder="Search SKU code, fabric name, colour or specs..." maxLength={100} autoComplete="off" className="input" />
         <button className="btn-secondary">Search</button>
         {q && <Link href="/skus" className="btn-secondary">Clear</Link>}
       </form>
@@ -53,6 +55,7 @@ export default async function SkuList({ searchParams }: { searchParams: Promise<
                 </div>
               </div>
               <p className="mt-1 break-words text-sm text-slate-600">{s.fabricName} - {s.fabricType} - {s.colour}{s.pattern ? ` - ${s.pattern}` : ""}</p>
+              {s.otherIdentifiers && <p className="text-xs text-slate-500 font-mono mt-0.5">{s.otherIdentifiers}</p>}
               <dl className="mt-3 grid grid-cols-2 gap-1 text-sm">
                 <dt className="text-slate-500">Price / m</dt><dd className="text-right">{formatPrice(s.sellingPricePerMetre)}</dd>
                 <dt className="text-slate-500">In stock</dt><dd className="text-right font-semibold">{formatMetres(s.currentStock)}</dd>

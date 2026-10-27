@@ -29,6 +29,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         { fabricName: { contains: token, mode: "insensitive" } },
         { fabricType: { contains: token, mode: "insensitive" } },
         { colour: { contains: token, mode: "insensitive" } },
+        { pattern: { contains: token, mode: "insensitive" } },
         { otherIdentifiers: { contains: token, mode: "insensitive" } },
       ],
     }));
@@ -147,7 +148,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                       <td className="td font-mono font-semibold">
                         {isManager ? <Link className="text-brand-700 hover:underline" href={`/skus/${s.id}`}>{s.code}</Link> : s.code}
                       </td>
-                      <td className="td">{s.fabricName}</td>
+                      <td className="td">
+                        <div>{s.fabricName}</div>
+                        {s.otherIdentifiers && <div className="text-xs text-slate-500 font-mono mt-0.5">{s.otherIdentifiers}</div>}
+                      </td>
                       <td className="td">{s.fabricType}</td>
                       <td className="td">{s.colour}</td>
                       <td className="td">{s.pattern ?? "-"}</td>
@@ -177,6 +181,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                         {isManager ? <Link className="text-brand-700" href={`/skus/${s.id}`}>{s.code}</Link> : s.code}
                       </p>
                       <p className="break-words text-sm text-slate-600">{s.fabricName}</p>
+                      {s.otherIdentifiers && <p className="text-xs text-slate-500 font-mono mt-0.5">{s.otherIdentifiers}</p>}
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       {isManager && !s.active && <ActiveBadge active={false} />}
