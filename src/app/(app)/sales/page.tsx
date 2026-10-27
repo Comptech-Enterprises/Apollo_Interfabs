@@ -28,7 +28,7 @@ export default async function SalesLog({ searchParams }: { searchParams: Promise
   const [rows, count, skus] = await Promise.all([
     prisma.sale.findMany({ where, include: { sku: true }, orderBy: [{ saleDate: "desc" }, { createdAt: "desc" }], skip: (page - 1) * PAGE, take: PAGE }),
     prisma.sale.count({ where }),
-    prisma.sku.findMany({ select: { id: true, code: true, fabricName: true }, orderBy: { code: "asc" } }),
+    prisma.sku.findMany({ select: { id: true, code: true, fabricName: true, colour: true }, orderBy: { code: "asc" } }),
   ]);
   const filtered = !!(sp.sku || sp.buyer || sp.from || sp.to);
 
@@ -41,7 +41,7 @@ export default async function SalesLog({ searchParams }: { searchParams: Promise
           <select id="sku" name="sku" defaultValue={sp.sku ?? ""} className="input">
             <option value="">All SKUs</option>
             {skus.map((s) => (
-              <option key={s.id} value={s.id}>{s.code} - {s.fabricName}</option>
+              <option key={s.id} value={s.id}>{s.code} - {s.fabricName} ({s.colour})</option>
             ))}
           </select>
         </div>

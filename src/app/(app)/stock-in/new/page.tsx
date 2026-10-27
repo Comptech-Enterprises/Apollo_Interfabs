@@ -23,7 +23,7 @@ export default async function NewStockIn({ searchParams }: { searchParams: Promi
             id: s.id,
             code: s.code,
             fabricName: s.fabricName,
-            label: `${s.code} - ${s.fabricName}, ${s.colour}${s.active ? "" : " (inactive)"}`,
+            label: `${s.code} - ${s.fabricName}, ${s.colour}${s.pattern ? `, ${s.pattern}` : ""}${s.otherIdentifiers ? ` (${s.otherIdentifiers})` : ""}${s.active ? "" : " (inactive)"}`,
           }))}
         />
       </div>

@@ -25,7 +25,7 @@ export default async function NewSale() {
             code: s.code,
             fabricName: s.fabricName,
             colour: s.colour,
-            label: `${s.code} - ${s.fabricName}, ${s.colour}${s.pattern ? `, ${s.pattern}` : ""}`,
+            label: `${s.code} - ${s.fabricName}, ${s.colour}${s.pattern ? `, ${s.pattern}` : ""}${s.otherIdentifiers ? ` (${s.otherIdentifiers})` : ""}`,
             price: Number(s.sellingPricePerMetre),
             stock: Number(s.currentStock),
           }))}
