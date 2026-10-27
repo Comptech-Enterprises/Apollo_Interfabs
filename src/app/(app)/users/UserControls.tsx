@@ -14,6 +14,9 @@ export function CreateUserForm() {
       <Field label="Name" name="name" error={errors.name}>
         <input id="name" name="name" required maxLength={100} className="input" autoComplete="off" />
       </Field>
+      <Field label="Username" name="username" error={errors.username}>
+        <input id="username" name="username" required maxLength={30} className="input" autoComplete="off" />
+      </Field>
       <Field label="Email" name="email" error={errors.email}>
         <input id="email" name="email" type="email" required maxLength={120} className="input" autoComplete="off" />
       </Field>

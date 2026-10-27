@@ -74,6 +74,7 @@ export const voidSchema = z.object({
 
 export const userSchema = z.object({
   name: text("Name"),
+  username: z.string().trim().toLowerCase().min(3, "Username must be at least 3 characters").max(30),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   role: z.enum(["MANAGER", "SALES"]),
   password: z.string().min(8, "Password must be at least 8 characters").max(100),

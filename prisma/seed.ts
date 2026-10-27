@@ -8,9 +8,9 @@ async function main() {
   if (!pw || pw.length < 8) throw new Error("Set SEED_TEMP_PASSWORD (min 8 chars) in .env");
   const hash = await bcrypt.hash(pw, 12);
   const users = [
-    { name: "Manager One", email: process.env.SEED_MANAGER1_EMAIL!, role: "MANAGER" as const },
-    { name: "Manager Two", email: process.env.SEED_MANAGER2_EMAIL!, role: "MANAGER" as const },
-    { name: "Sales Person", email: process.env.SEED_SALES_EMAIL!, role: "SALES" as const },
+    { name: "Anil", username: "anil", email: process.env.SEED_MANAGER1_EMAIL!, role: "MANAGER" as const },
+    { name: "Rahul", username: "rahul", email: process.env.SEED_MANAGER2_EMAIL!, role: "MANAGER" as const },
+    { name: "Sales Person", username: "sales", email: process.env.SEED_SALES_EMAIL!, role: "SALES" as const },
   ];
   for (const u of users) {
     if (!u.email) throw new Error("Seed emails are missing in .env");

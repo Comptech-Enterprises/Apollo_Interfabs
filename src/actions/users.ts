@@ -24,6 +24,7 @@ export async function createUserAction(_prev: ActionResult, fd: FormData): Promi
     const u = await prisma.user.create({
       data: {
         name: p.data.name,
+        username: p.data.username,
         email: p.data.email,
         role: p.data.role,
         passwordHash: await bcrypt.hash(p.data.password, 12),

@@ -29,18 +29,18 @@ function fail(key: string) {
 }
 
 export async function loginAction(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
-  const email = String(fd.get("email") ?? "").trim().toLowerCase();
+  const username = String(fd.get("email") ?? "").trim().toLowerCase();
   const password = String(fd.get("password") ?? "");
-  if (!email || !password) return { ok: false, message: "Enter your email and password." };
-  if (tooMany(email)) return { ok: false, message: "Too many failed attempts. Please wait 15 minutes and try again." };
+  if (!username || !password) return { ok: false, message: "Enter your username and password." };
+  if (tooMany(username)) return { ok: false, message: "Too many failed attempts. Please wait 15 minutes and try again." };
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({ where: { username } });
   const valid = user && user.active && (await bcrypt.compare(password, user.passwordHash));
   if (!user || !valid) {
-    fail(email);
-    return { ok: false, message: "Incorrect email or password." };
+    fail(username);
+    return { ok: false, message: "Incorrect username or password." };
   }
-  attempts.delete(email);
+  attempts.delete(username);
   const token = await signSession({ uid: user.id, name: user.name, role: user.role });
   (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions);
   redirect(user.mustChangePassword ? "/account?first=1" : "/dashboard");
