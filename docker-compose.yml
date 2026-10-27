@@ -1,14 +1,23 @@
 services:
   db:
-    image: postgres:16
+    image: mongo:7
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: apollo
-      POSTGRES_PASSWORD: apollo_dev_pw
-      POSTGRES_DB: apollo_inventory
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
-      - "5433:5432"
+      - "27017:27017"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mongodata:/data/db
+    healthcheck:
+      test: mongosh --eval "rs.status()" --quiet
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  mongo-init:
+    image: mongo:7
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: ["mongosh", "--host", "db", "--eval", "try { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] }) } catch(e) { if (e.codeName !== 'AlreadyInitialized') throw e }"]
 volumes:
-  pgdata:
+  mongodata:

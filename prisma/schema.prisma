@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -14,7 +13,7 @@ enum Role {
 }
 
 model User {
-  id                 String   @id @default(cuid())
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
   name               String
   email              String   @unique
   passwordHash       String
@@ -25,18 +24,18 @@ model User {
 }
 
 model Sku {
-  id                   String        @id @default(cuid())
+  id                   String        @id @default(auto()) @map("_id") @db.ObjectId
   code                 String        @unique
   fabricName           String
   fabricType           String
   colour               String
   pattern              String?
   otherIdentifiers     String?
-  sellingPricePerMetre Decimal       @db.Decimal(10, 2)
-  lowStockThreshold    Decimal       @default(0) @db.Decimal(10, 2)
-  currentStock         Decimal       @default(0) @db.Decimal(12, 2)
+  sellingPricePerMetre Float
+  lowStockThreshold    Float         @default(0)
+  currentStock         Float         @default(0)
   active               Boolean       @default(true)
-  createdById          String
+  createdById          String        @db.ObjectId
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
   stockIns             StockIn[]
@@ -47,52 +46,52 @@ model Sku {
 }
 
 model StockIn {
-  id                String    @id @default(cuid())
-  skuId             String
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  skuId             String    @db.ObjectId
   sku               Sku       @relation(fields: [skuId], references: [id])
   supplierName      String
-  quantityMetres    Decimal   @db.Decimal(12, 2)
-  purchaseDate      DateTime  @db.Date
-  costPricePerMetre Decimal   @db.Decimal(10, 2)
-  createdById       String
+  quantityMetres    Float
+  purchaseDate      DateTime
+  costPricePerMetre Float
+  createdById       String    @db.ObjectId
   createdAt         DateTime  @default(now())
   voidedAt          DateTime?
-  voidedById        String?
+  voidedById        String?   @db.ObjectId
   voidReason        String?
 
   @@index([skuId, purchaseDate])
 }
 
 model Sale {
-  id             String    @id @default(cuid())
-  skuId          String
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  skuId          String    @db.ObjectId
   sku            Sku       @relation(fields: [skuId], references: [id])
-  quantityMetres Decimal   @db.Decimal(12, 2)
-  pricePerMetre  Decimal   @db.Decimal(10, 2)
-  saleDate       DateTime  @db.Date
+  quantityMetres Float
+  pricePerMetre  Float
+  saleDate       DateTime
   buyerName      String?
-  createdById    String
+  createdById    String    @db.ObjectId
   createdAt      DateTime  @default(now())
   voidedAt       DateTime?
-  voidedById     String?
+  voidedById     String?   @db.ObjectId
   voidReason     String?
 
   @@index([skuId, saleDate])
 }
 
 model PriceChange {
-  id          String   @id @default(cuid())
-  skuId       String
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  skuId       String   @db.ObjectId
   sku         Sku      @relation(fields: [skuId], references: [id])
-  oldPrice    Decimal? @db.Decimal(10, 2)
-  newPrice    Decimal  @db.Decimal(10, 2)
-  changedById String
+  oldPrice    Float?
+  newPrice    Float
+  changedById String   @db.ObjectId
   changedAt   DateTime @default(now())
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  actorId   String
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  actorId   String   @db.ObjectId
   action    String
   entity    String
   entityId  String
