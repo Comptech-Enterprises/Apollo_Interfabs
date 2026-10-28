@@ -46,7 +46,7 @@ export default async function SkuList({ searchParams }: { searchParams: Promise<
       ) : (
         <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {skus.map((s) => (
-            <li key={s.id} className={`card ${s.active ? "" : "opacity-75"}`}>
+            <li key={s.id} className={`card hover:shadow-md hover:-translate-y-0.5 ${s.active ? "" : "opacity-75"}`}>
               <div className="flex items-start justify-between gap-2">
                 <Link href={`/skus/${s.id}`} className="min-w-0 break-all font-mono text-base font-bold text-brand-700 hover:underline">{s.code}</Link>
                 <div className="flex shrink-0 flex-col items-end gap-1">

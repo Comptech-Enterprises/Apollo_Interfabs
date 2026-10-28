@@ -165,9 +165,9 @@ export function InventorySearch({ isManager, facets }: { isManager: boolean; fac
     <div className="mt-8 space-y-5">
       {/* Search bar with entrance animation */}
       <AnimateIn delay={100}>
-        <div ref={wrapperRef} className="relative mx-auto max-w-2xl">
+        <div ref={wrapperRef} className="relative mx-auto max-w-3xl">
           <div className="group relative">
-            <svg className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 transition-colors duration-200 group-focus-within:text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="pointer-events-none absolute left-5 top-1/2 h-5.5 w-5.5 -translate-y-1/2 text-slate-400 transition-colors duration-200 group-focus-within:text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
             </svg>
             <input
@@ -178,11 +178,11 @@ export function InventorySearch({ isManager, facets }: { isManager: boolean; fac
               onFocus={() => { if (query.trim() && suggestions.length > 0) setShowSuggestions(true); }}
               onKeyDown={handleKeyDown}
               placeholder="Search by SKU code, fabric name, colour, type..."
-              className="w-full rounded-2xl border border-slate-200 bg-white/80 py-4 pl-12 pr-28 text-base shadow-sm backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 focus:border-brand-300 focus:bg-white focus:shadow-lg focus:shadow-brand-100/50 focus:outline-none focus:ring-4 focus:ring-brand-100"
+              className="w-full rounded-2xl border border-slate-200 bg-white/80 py-5 pl-14 pr-32 text-lg shadow-sm backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 focus:border-brand-300 focus:bg-white focus:shadow-lg focus:shadow-brand-100/50 focus:outline-none focus:ring-4 focus:ring-brand-100"
               autoComplete="off"
             />
             {/* Right side controls */}
-            <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
+            <div className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-2">
               {/* Searching spinner */}
               {searching && (
                 <svg className="h-4 w-4 animate-spin text-brand-500" fill="none" viewBox="0 0 24 24">
@@ -211,7 +211,7 @@ export function InventorySearch({ isManager, facets }: { isManager: boolean; fac
               {/* Filter pill button */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-medium transition-all duration-200 ${showFilters ? "bg-brand-600 text-white shadow-sm" : "bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700"}`}
+                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-all duration-200 ${showFilters ? "bg-brand-600 text-white shadow-sm" : "bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700"}`}
               >
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
@@ -280,8 +280,8 @@ export function InventorySearch({ isManager, facets }: { isManager: boolean; fac
 
           {/* Filters panel -- attached directly under search bar */}
           <SlideDown show={showFilters && !showSuggestions}>
-            <div className="mt-1 rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm backdrop-blur-sm">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-1 rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <FilterSelect label="Fabric type" value={filters.type} options={facets.types} onChange={(v) => setFilters({ ...filters, type: v })} />
                 <FilterSelect label="Colour" value={filters.colour} options={facets.colours} onChange={(v) => setFilters({ ...filters, colour: v })} />
                 <FilterSelect label="Pattern" value={filters.pattern} options={facets.patterns} onChange={(v) => setFilters({ ...filters, pattern: v })} />
@@ -312,7 +312,7 @@ export function InventorySearch({ isManager, facets }: { isManager: boolean; fac
 
       {/* Selected product detail with spring entrance */}
       {selected && (
-        <AnimateIn key={selected.id} className="mx-auto max-w-2xl">
+        <AnimateIn key={selected.id} className="mx-auto max-w-3xl">
           <ProductDetail sku={selected} isManager={isManager} />
         </AnimateIn>
       )}
@@ -355,14 +355,6 @@ export function InventorySearch({ isManager, facets }: { isManager: boolean; fac
           <p className="text-center text-sm text-slate-400">No products match your search</p>
         </AnimateIn>
       )}
-
-      <style jsx global>{`
-        @keyframes pop {
-          0% { transform: scale(0); }
-          50% { transform: scale(1.2); }
-          100% { transform: scale(1); }
-        }
-      `}</style>
     </div>
   );
 }
@@ -417,11 +409,11 @@ function DetailCard({ label, value, highlight }: { label: string; value: string;
 function FilterSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-slate-500">{label}</label>
+      <label className="mb-1.5 block text-sm font-medium text-slate-500">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition-all duration-200 focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-100"
+        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 transition-all duration-200 focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-100"
       >
         <option value="">All</option>
         {options.map((o) => <option key={o} value={o}>{o}</option>)}

@@ -9,7 +9,7 @@ import { initialResult } from "@/lib/result";
 export function SubmitButton({ children, pending: _p, className = "btn-primary", ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement> & { pending?: string }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} className={className} {...rest}>
+    <button type="submit" disabled={pending} className={`${className} transition-all duration-200`} {...rest}>
       {pending ? (
         <span className="inline-flex items-center gap-2">
           <svg className="h-4 w-4 animate-spin text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
@@ -93,7 +93,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 
 export function EmptyState({ title, body, children }: { title: string; body?: string; children?: React.ReactNode }) {
   return (
-    <div className="card text-center">
+    <div className="card animate-page-enter text-center">
       <p className="text-base font-semibold text-slate-800">{title}</p>
       {body && <p className="mt-1 text-sm text-slate-600">{body}</p>}
       {children && <div className="mt-4 flex justify-center">{children}</div>}

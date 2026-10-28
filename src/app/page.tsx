@@ -20,7 +20,7 @@ export default async function LoginPage() {
         <Logo href="/" />
       </header>
       <section className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 pb-10">
-        <div className="card">
+        <div className="card animate-page-enter">
           <h1 className="text-2xl font-bold">Sign in</h1>
           <p className="mt-1 text-sm text-slate-600">Use the account provided by your manager.</p>
           <LoginForm />

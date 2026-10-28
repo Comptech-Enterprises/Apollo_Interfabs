@@ -9,9 +9,9 @@ export function Footer() {
         <p>© {new Date().getFullYear()} {site.name}. All rights reserved.</p>
         <ContactLinks />
         <nav aria-label="Footer" className="flex gap-4">
-          <Link href="/dashboard" className="hover:underline">Inventory</Link>
-          <Link href="/sales/new" className="hover:underline">Record Sale</Link>
-          <Link href="/account" className="hover:underline">Account</Link>
+          <Link href="/dashboard" className="transition-colors duration-200 hover:text-brand-600">Inventory</Link>
+          <Link href="/sales/new" className="transition-colors duration-200 hover:text-brand-600">Record Sale</Link>
+          <Link href="/account" className="transition-colors duration-200 hover:text-brand-600">Account</Link>
         </nav>
       </div>
     </footer>

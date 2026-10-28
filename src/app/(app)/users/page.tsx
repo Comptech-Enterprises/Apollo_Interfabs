@@ -18,7 +18,7 @@ export default async function Users() {
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
         <ul className="space-y-3">
           {users.map((u) => (
-            <li key={u.id} className="card">
+            <li key={u.id} className="card hover:shadow-md hover:-translate-y-0.5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="break-words font-semibold">{u.name}{u.id === me.uid && <span className="ml-2 text-xs font-normal text-slate-500">(you)</span>}</p>

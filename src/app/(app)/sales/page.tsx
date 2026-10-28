@@ -88,7 +88,7 @@ export default async function SalesLog({ searchParams }: { searchParams: Promise
           </div>
           <ul className="space-y-3 md:hidden">
             {rows.map((r) => (
-              <li key={r.id} className={`card ${r.voidedAt ? "opacity-60" : ""}`}>
+              <li key={r.id} className={`card hover:shadow-md hover:-translate-y-0.5 ${r.voidedAt ? "opacity-60" : ""}`}>
                 <div className="flex items-start justify-between gap-2">
                   <Link href={`/skus/${r.skuId}`} className="break-all font-mono font-bold text-brand-700">{r.sku.code}</Link>
                   <span className="shrink-0 text-sm text-slate-600">{formatDate(r.saleDate)}</span>

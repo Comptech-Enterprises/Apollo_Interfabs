@@ -121,7 +121,7 @@ export function MobileBottomNav({ role }: { role: string }) {
                 active ? "text-brand-600 font-bold" : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${active ? "bg-brand-50 text-brand-600" : ""}`}>
+              <span className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200 ${active ? "bg-brand-50 text-brand-600 scale-110" : ""}`}>
                 {link.icon}
               </span>
               <span className="mt-0.5 truncate">{link.label}</span>

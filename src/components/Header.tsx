@@ -33,7 +33,7 @@ export function Header({ items, userName, role }: { items: Item[]; userName: str
   const active = (href: string) => pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur transition-shadow duration-300">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
         <Logo />
         <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
@@ -56,7 +56,7 @@ export function Header({ items, userName, role }: { items: Item[]; userName: str
             <span className="block text-xs text-slate-500">{role === "MANAGER" ? "Manager" : "Sales"}</span>
           </Link>
           <form action={logoutAction}>
-            <button className="btn-secondary">Sign out</button>
+            <button className="btn-secondary min-h-0 py-1.5 px-3 text-xs">Sign out</button>
           </form>
         </div>
         <button

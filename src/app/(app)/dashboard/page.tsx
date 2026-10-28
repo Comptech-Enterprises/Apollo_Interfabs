@@ -17,7 +17,7 @@ export default async function Dashboard() {
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mx-auto mb-6 flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Inventory</h1>
         <div className="flex flex-wrap gap-2">
           <Link href="/sales/new" className="btn-primary">Record sale</Link>
