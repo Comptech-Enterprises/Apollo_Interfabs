@@ -34,7 +34,7 @@ export default async function Purchases({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <PageHeader title="Purchase log" subtitle="Every stock arrival, newest first." actions={<Link href="/stock-in/new" className="btn-primary">Record stock in</Link>} />
+      <PageHeader title="Purchase log" actions={<Link href="/stock-in/new" className="btn-primary">Record stock in</Link>} />
       <form method="get" role="search" className="card mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div>
           <label htmlFor="sku" className="mb-1 block text-sm font-medium">SKU / Fabric</label>

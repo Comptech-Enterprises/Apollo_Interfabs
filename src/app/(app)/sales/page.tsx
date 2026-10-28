@@ -34,7 +34,7 @@ export default async function SalesLog({ searchParams }: { searchParams: Promise
 
   return (
     <>
-      <PageHeader title="Sales log" subtitle="Every sale, newest first." />
+      <PageHeader title="Sales log" />
       <form method="get" role="search" className="card mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div>
           <label htmlFor="sku" className="mb-1 block text-sm font-medium">SKU / Fabric</label>

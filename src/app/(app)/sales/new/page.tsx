@@ -16,7 +16,7 @@ export default async function NewSale() {
   const skus = await prisma.sku.findMany({ where: { active: true }, orderBy: { code: "asc" } });
   return (
     <>
-      <PageHeader title="Record sale" subtitle="Pick a SKU, enter the metres sold. The price is set by your manager." />
+      <PageHeader title="Record sale" />
       <div className="mx-auto max-w-xl">
         <SaleForm
           today={todayIST()}

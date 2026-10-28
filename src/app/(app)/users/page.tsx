@@ -14,7 +14,7 @@ export default async function Users() {
   const users = await prisma.user.findMany({ orderBy: [{ role: "asc" }, { name: "asc" }] });
   return (
     <>
-      <PageHeader title="Users" subtitle="Managers create and manage accounts. There is no public sign-up." />
+      <PageHeader title="Users" />
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
         <ul className="space-y-3">
           {users.map((u) => (

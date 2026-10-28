@@ -32,7 +32,7 @@ export default async function SkuList({ searchParams }: { searchParams: Promise<
   });
   return (
     <>
-      <PageHeader title="SKUs" subtitle="Add SKUs, set prices and mark them active or inactive." actions={<Link href="/skus/new" className="btn-primary">Add SKU</Link>} />
+      <PageHeader title="SKUs" actions={<Link href="/skus/new" className="btn-primary">Add SKU</Link>} />
       <form method="get" role="search" className="mb-4 flex gap-2">
         <label htmlFor="q" className="sr-only">Search SKUs</label>
         <input id="q" name="q" defaultValue={q ?? ""} placeholder="Search SKU code, fabric name, colour or specs..." maxLength={100} autoComplete="off" className="input" />

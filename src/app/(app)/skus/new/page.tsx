@@ -10,7 +10,7 @@ export default async function NewSku() {
   await requireManager();
   return (
     <>
-      <PageHeader title="Add SKU" subtitle="Each purchase batch gets its own SKU and its own price." actions={<Link href="/skus" className="btn-secondary">Back to SKUs</Link>} />
+      <PageHeader title="Add SKU" actions={<Link href="/skus" className="btn-secondary">Back to SKUs</Link>} />
       <div className="mx-auto max-w-2xl">
         <SkuForm mode="create" />
       </div>

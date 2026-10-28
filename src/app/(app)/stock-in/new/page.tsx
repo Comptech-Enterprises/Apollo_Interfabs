@@ -14,7 +14,7 @@ export default async function NewStockIn({ searchParams }: { searchParams: Promi
   const skus = await prisma.sku.findMany({ orderBy: { code: "asc" } });
   return (
     <>
-      <PageHeader title="Record stock in" subtitle="Add a fabric arrival to a SKU's stock." />
+      <PageHeader title="Record stock in" />
       <div className="mx-auto max-w-xl">
         <StockInForm
           today={todayIST()}

@@ -63,7 +63,6 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     <>
       <PageHeader
         title="Inventory"
-        subtitle="Current stock per SKU, updated with every purchase and sale."
         actions={
           <>
             <Link href="/sales/new" className="btn-primary">Record sale</Link>
