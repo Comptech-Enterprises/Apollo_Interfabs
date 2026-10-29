@@ -2,14 +2,14 @@ const phone = (process.env.NEXT_PUBLIC_COMPANY_PHONE ?? "").trim();
 const email = (process.env.NEXT_PUBLIC_COMPANY_EMAIL ?? "").trim();
 
 export const site = {
-  name: "Apollo Interfabs",
-  product: "Inventory Portal",
+  name: "Inventory Portal",
+  product: "",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   // Contact details come from env vars so no fake numbers are ever shown.
   phone: phone || null,
   email: email || null,
   description:
-    "Apollo Interfabs inventory portal: track fabric stock, purchases and sales in real time.",
+    "Inventory portal: track fabric stock, purchases and sales in real time.",
 };
 
 export type NavItem = { href: string; label: string; manager?: boolean };

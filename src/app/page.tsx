@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Sign in",
-  description: "Sign in to the Apollo Interfabs inventory portal to manage fabric stock, purchases and sales.",
+  description: "Sign in to the inventory portal to manage fabric stock, purchases and sales.",
 };
 
 export default async function LoginPage() {

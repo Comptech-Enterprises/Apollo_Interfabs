@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Apollo Interfabs Inventory Portal",
-    short_name: "Apollo",
-    description: "Fabric inventory, purchases and sales for Apollo Interfabs.",
+    name: "Inventory Portal",
+    short_name: "Inventory",
+    description: "Fabric inventory, purchases and sales tracking.",
     start_url: "/dashboard",
     display: "standalone",
     background_color: "#f8fafc",
