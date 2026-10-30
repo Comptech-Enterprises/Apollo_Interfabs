@@ -64,6 +64,13 @@ function SlideDown({ show, children, className = "" }: { show: boolean; children
   );
 }
 
+function stockColor(qty: number): { card: string; badge: string; text: string; sub: string } {
+  if (qty < 25) return { card: "bg-red-50 border-red-200", badge: "bg-red-100 text-red-700", text: "text-red-900", sub: "text-red-600" };
+  if (qty < 100) return { card: "bg-orange-50 border-orange-200", badge: "bg-orange-100 text-orange-700", text: "text-orange-900", sub: "text-orange-600" };
+  if (qty <= 400) return { card: "bg-blue-50 border-blue-200", badge: "bg-blue-100 text-blue-700", text: "text-blue-900", sub: "text-blue-600" };
+  return { card: "bg-purple-50 border-purple-200", badge: "bg-purple-100 text-purple-700", text: "text-purple-900", sub: "text-purple-600" };
+}
+
 export function InventorySearch({ isManager, facets }: { isManager: boolean; facets: Facets }) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
@@ -235,33 +242,33 @@ export function InventorySearch({ isManager, facets }: { isManager: boolean; fac
             className="absolute z-30 mt-2 max-h-80 w-full overflow-auto rounded-2xl border border-slate-200/80 bg-white shadow-xl shadow-slate-200/50"
           >
             <ul>
-              {suggestions.map((s, i) => (
+              {suggestions.map((s, i) => {
+                const sc = stockColor(Number(s.currentStock));
+                return (
                 <li
                   key={s.id}
                   onMouseDown={() => handleSelect(s)}
                   onMouseEnter={() => setHighlightIndex(i)}
-                  className="cursor-pointer transition-colors duration-150"
-                  style={{
-                    backgroundColor: i === highlightIndex ? "rgb(239 246 255)" : "transparent",
-                  }}
+                  className={`cursor-pointer ${sc.card} transition-all duration-150 ${i === highlightIndex ? "brightness-95" : ""}`}
                 >
-                  <div className={`px-4 py-3 ${i > 0 ? "border-t border-slate-100/60" : ""}`}>
+                  <div className={`px-4 py-3 ${i > 0 ? "border-t border-inherit" : ""}`}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <span className="font-mono font-semibold text-brand-700">{s.code}</span>
-                        <span className="ml-2 text-sm text-slate-600">{s.fabricName}</span>
+                        <span className={`font-mono font-semibold ${sc.text}`}>{s.code}</span>
+                        <span className={`ml-2 text-sm ${sc.sub}`}>{s.fabricName}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-slate-400">
-                        <span>{formatMetres(s.currentStock)}</span>
-                        <span className="font-medium text-slate-600">{formatPrice(s.sellingPricePerMetre)}</span>
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className={`rounded-full px-2 py-0.5 font-semibold ${sc.badge}`}>{formatMetres(s.currentStock)}</span>
+                        <span className={`font-medium ${sc.sub}`}>{formatPrice(s.sellingPricePerMetre)}</span>
                       </div>
                     </div>
-                    <p className="mt-0.5 text-xs text-slate-400">
+                    <p className={`mt-0.5 text-xs ${sc.sub} opacity-75`}>
                       {s.fabricType} · {s.colour}{s.pattern ? ` · ${s.pattern}` : ""}
                     </p>
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </div>
 
@@ -325,25 +332,7 @@ export function InventorySearch({ isManager, facets }: { isManager: boolean; fac
             <ul className="space-y-2">
               {results.map((s, i) => (
                 <AnimateIn key={s.id} delay={i * 50}>
-                  <button
-                    onClick={() => handleSelect(s)}
-                    className="card w-full text-left transition-all duration-200 hover:shadow-md hover:shadow-brand-100/40 hover:-translate-y-0.5 active:scale-[0.99]"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <span className="font-mono font-semibold text-brand-700">{s.code}</span>
-                        <span className="ml-2 text-slate-700">{s.fabricName}</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-sm">
-                        {isLowStock(s.currentStock, s.lowStockThreshold) && <LowStockBadge />}
-                        {Number(s.currentStock) <= 0 && <OutBadge />}
-                        {!s.active && <ActiveBadge active={false} />}
-                      </div>
-                    </div>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {s.fabricType} · {s.colour}{s.pattern ? ` · ${s.pattern}` : ""} · {formatMetres(s.currentStock)} · {formatPrice(s.sellingPricePerMetre)}/m
-                    </p>
-                  </button>
+                  <ResultCard sku={s} onClick={() => handleSelect(s)} />
                 </AnimateIn>
               ))}
             </ul>
@@ -403,6 +392,32 @@ function DetailCard({ label, value, highlight }: { label: string; value: string;
       <dt className="text-xs text-slate-400">{label}</dt>
       <dd className={`mt-1 ${highlight ? "text-lg font-bold text-slate-900" : "font-medium text-slate-700"}`}>{value}</dd>
     </div>
+  );
+}
+
+function ResultCard({ sku: s, onClick }: { sku: SearchResult; onClick: () => void }) {
+  const sc = stockColor(Number(s.currentStock));
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full rounded-2xl border p-4 ${sc.card} text-left transition-all duration-200 hover:brightness-95 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99]`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <span className={`font-mono font-semibold ${sc.text}`}>{s.code}</span>
+          <span className={`ml-2 ${sc.sub}`}>{s.fabricName}</span>
+        </div>
+        <div className="flex items-center gap-3 text-sm">
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${sc.badge}`}>
+            {formatMetres(s.currentStock)}
+          </span>
+          {!s.active && <ActiveBadge active={false} />}
+        </div>
+      </div>
+      <p className={`mt-1 text-sm ${sc.sub} opacity-75`}>
+        {s.fabricType} · {s.colour}{s.pattern ? ` · ${s.pattern}` : ""} · {formatPrice(s.sellingPricePerMetre)}/m
+      </p>
+    </button>
   );
 }
 
