@@ -11,6 +11,7 @@ export type SearchResult = {
   colour: string;
   pattern: string | null;
   otherIdentifiers: string | null;
+  warehouse: string;
   sellingPricePerMetre: number;
   currentStock: number;
   lowStockThreshold: number;
@@ -45,6 +46,8 @@ export async function searchSkus(query: string, filters?: {
   if (filters?.colour) where.colour = filters.colour;
   if (filters?.pattern) where.pattern = filters.pattern;
 
+  if (user.warehouses.length > 0) where.warehouse = { in: user.warehouses };
+
   if (user.role !== "MANAGER") where.active = true;
   else if (filters?.status === "active") where.active = true;
   else if (filters?.status === "inactive") where.active = false;
@@ -63,6 +66,7 @@ export async function searchSkus(query: string, filters?: {
     colour: s.colour,
     pattern: s.pattern,
     otherIdentifiers: s.otherIdentifiers,
+    warehouse: s.warehouse,
     sellingPricePerMetre: Number(s.sellingPricePerMetre),
     currentStock: Number(s.currentStock),
     lowStockThreshold: Number(s.lowStockThreshold),

@@ -263,7 +263,7 @@ export function InventorySearch({ isManager, facets }: { isManager: boolean; fac
                       </div>
                     </div>
                     <p className={`mt-0.5 text-xs ${sc.sub} opacity-75`}>
-                      {s.fabricType} · {s.colour}{s.pattern ? ` · ${s.pattern}` : ""}
+                      {s.fabricType} · {s.colour}{s.pattern ? ` · ${s.pattern}` : ""} · {s.warehouse}
                     </p>
                   </div>
                 </li>
@@ -369,6 +369,7 @@ function ProductDetail({ sku: s, isManager }: { sku: SearchResult; isManager: bo
         <DetailCard label="Fabric type" value={s.fabricType} />
         <DetailCard label="Colour" value={s.colour} />
         <DetailCard label="Pattern" value={s.pattern ?? "-"} />
+        <DetailCard label="Warehouse" value={s.warehouse} />
         <DetailCard label="Price per metre" value={formatPrice(s.sellingPricePerMetre)} highlight />
         <DetailCard label="Current stock" value={formatMetres(s.currentStock)} highlight />
         {s.lowStockThreshold > 0 && (
@@ -415,7 +416,7 @@ function ResultCard({ sku: s, onClick }: { sku: SearchResult; onClick: () => voi
         </div>
       </div>
       <p className={`mt-1 text-sm ${sc.sub} opacity-75`}>
-        {s.fabricType} · {s.colour}{s.pattern ? ` · ${s.pattern}` : ""} · {formatPrice(s.sellingPricePerMetre)}/m
+        {s.fabricType} · {s.colour}{s.pattern ? ` · ${s.pattern}` : ""} · {s.warehouse} · {formatPrice(s.sellingPricePerMetre)}/m
       </p>
     </button>
   );

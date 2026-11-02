@@ -41,6 +41,8 @@ export const skuCode = z
   .regex(/^[A-Z0-9]+(-[A-Z0-9]+)*$/, "Use capital letters, digits and hyphens only (e.g. BLK-POLY-JUN26)")
   .max(40, "SKU code is too long");
 
+export const WAREHOUSES = ["Warehouse 1", "Warehouse 2", "Warehouse 3", "Warehouse 4"] as const;
+
 export const skuSchema = z.object({
   code: skuCode,
   fabricName: text("Fabric name"),
@@ -48,6 +50,7 @@ export const skuSchema = z.object({
   colour: text("Colour", 50),
   pattern: optionalText(50),
   otherIdentifiers: optionalText(300),
+  warehouse: z.enum(WAREHOUSES, { errorMap: () => ({ message: "Select a warehouse" }) }),
   sellingPricePerMetre: money("Selling price"),
   lowStockThreshold: nonNegative("Low stock threshold"),
 });

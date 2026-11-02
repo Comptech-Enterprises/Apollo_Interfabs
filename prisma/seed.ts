@@ -8,19 +8,21 @@ async function main() {
   if (!pw || pw.length < 8) throw new Error("Set SEED_TEMP_PASSWORD (min 8 chars) in .env");
   const hash = await bcrypt.hash(pw, 12);
   const users = [
-    { name: "Anil", username: "anil", email: process.env.SEED_MANAGER1_EMAIL!, role: "MANAGER" as const },
-    { name: "Rahul", username: "rahul", email: process.env.SEED_MANAGER2_EMAIL!, role: "MANAGER" as const },
-    { name: "Sales Person", username: "sales", email: process.env.SEED_SALES_EMAIL!, role: "SALES" as const },
+    { name: "Anil", username: "anil", email: process.env.SEED_MANAGER1_EMAIL!, role: "MANAGER" as const, warehouses: [] as string[] },
+    { name: "Rahul", username: "rahul", email: process.env.SEED_MANAGER2_EMAIL!, role: "MANAGER" as const, warehouses: [] as string[] },
+    { name: "Sales Person", username: "sales", email: process.env.SEED_SALES_EMAIL!, role: "SALES" as const, warehouses: [] as string[] },
+    { name: "Inventory Manager 1", username: "invmgr1", email: "invmgr1@inventory.local", role: "MANAGER" as const, warehouses: ["Warehouse 1", "Warehouse 2"] },
+    { name: "Inventory Manager 2", username: "invmgr2", email: "invmgr2@inventory.local", role: "MANAGER" as const, warehouses: ["Warehouse 3", "Warehouse 4"] },
   ];
   for (const u of users) {
     if (!u.email) throw new Error("Seed emails are missing in .env");
     await prisma.user.upsert({
       where: { email: u.email.toLowerCase() },
-      update: {},
+      update: { warehouses: u.warehouses },
       create: { ...u, email: u.email.toLowerCase(), passwordHash: hash, mustChangePassword: true },
     });
   }
-  console.log("Seeded 2 managers and 1 sales user. They must change the password at first sign-in.");
+  console.log("Seeded 3 original users + 2 inventory managers. They must change the password at first sign-in.");
 
   if (process.argv.includes("--demo")) {
     const mgr = await prisma.user.findFirstOrThrow({ where: { role: "MANAGER" } });

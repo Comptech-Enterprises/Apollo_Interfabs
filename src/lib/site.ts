@@ -17,7 +17,6 @@ export type NavItem = { href: string; label: string; manager?: boolean };
 /** Single source of truth for navigation, so there are no dead links. */
 export const navItems: NavItem[] = [
   { href: "/dashboard", label: "Inventory" },
-  { href: "/skus", label: "SKUs", manager: true },
   { href: "/purchases", label: "Purchases", manager: true },
   { href: "/sales", label: "Sales Log", manager: true },
   { href: "/users", label: "Users", manager: true },

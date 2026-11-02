@@ -7,6 +7,7 @@ export type SessionPayload = {
   uid: string;
   name: string;
   role: "MANAGER" | "SALES";
+  warehouses: string[];
 };
 
 function key() {
@@ -28,7 +29,7 @@ export async function verifySession(token?: string): Promise<SessionPayload | nu
   try {
     const { payload } = await jwtVerify(token, key());
     if (!payload.uid || !payload.role) return null;
-    return { uid: String(payload.uid), name: String(payload.name), role: payload.role as SessionPayload["role"] };
+    return { uid: String(payload.uid), name: String(payload.name), role: payload.role as SessionPayload["role"], warehouses: (payload.warehouses as string[]) ?? [] };
   } catch {
     return null;
   }

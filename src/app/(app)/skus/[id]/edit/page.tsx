@@ -9,7 +9,7 @@ import { SkuForm } from "@/components/SkuForm";
 export const metadata: Metadata = { title: "Edit SKU", description: "Edit a SKU, its selling price and low-stock threshold." };
 
 export default async function EditSku({ params }: { params: Promise<{ id: string }> }) {
-  await requireManager();
+  const user = await requireManager();
   const { id } = await params;
   const s = await prisma.sku.findUnique({ where: { id } });
   if (!s) notFound();
@@ -19,6 +19,7 @@ export default async function EditSku({ params }: { params: Promise<{ id: string
       <div className="mx-auto max-w-2xl">
         <SkuForm
           mode="edit"
+          allowedWarehouses={user.warehouses}
           initial={{
             id: s.id,
             code: s.code,
@@ -27,6 +28,7 @@ export default async function EditSku({ params }: { params: Promise<{ id: string
             colour: s.colour,
             pattern: s.pattern ?? "",
             otherIdentifiers: s.otherIdentifiers ?? "",
+            warehouse: s.warehouse,
             sellingPricePerMetre: s.sellingPricePerMetre.toString(),
             lowStockThreshold: s.lowStockThreshold.toString(),
           }}

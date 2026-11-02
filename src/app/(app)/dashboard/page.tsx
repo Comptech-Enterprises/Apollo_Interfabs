@@ -18,7 +18,10 @@ export default async function Dashboard() {
   return (
     <>
       <div className="mx-auto mb-6 max-w-3xl">
-        <h1 className="mb-4 text-2xl font-bold text-slate-900">Inventory</h1>
+        <div className="mb-4 flex items-end justify-between">
+          <h1 className="text-2xl font-bold text-slate-900">Inventory</h1>
+          {isManager && <Link href="/skus/new" className="btn-primary">Add SKU</Link>}
+        </div>
         <div className="flex gap-2">
           <Link href="/sales/new" className="btn-primary flex-1 text-center">Record Sale</Link>
           {isManager && <Link href="/purchases" className="btn-secondary flex-1 text-center">Record Purchase</Link>}

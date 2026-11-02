@@ -41,7 +41,7 @@ export async function loginAction(_prev: ActionResult, fd: FormData): Promise<Ac
     return { ok: false, message: "Incorrect username or password." };
   }
   attempts.delete(username);
-  const token = await signSession({ uid: user.id, name: user.name, role: user.role });
+  const token = await signSession({ uid: user.id, name: user.name, role: user.role, warehouses: user.warehouses });
   (await cookies()).set(SESSION_COOKIE, token, sessionCookieOptions);
   redirect(user.mustChangePassword ? "/account?first=1" : "/dashboard");
 }

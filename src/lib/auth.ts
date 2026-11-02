@@ -12,7 +12,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!s) return null;
   const u = await prisma.user.findUnique({ where: { id: s.uid } });
   if (!u || !u.active) return null;
-  return { uid: u.id, name: u.name, role: u.role, mustChangePassword: u.mustChangePassword };
+  return { uid: u.id, name: u.name, role: u.role, warehouses: u.warehouses, mustChangePassword: u.mustChangePassword };
 }
 
 export async function requireUser(): Promise<CurrentUser> {

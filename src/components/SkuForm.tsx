@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createSkuAction, updateSkuAction } from "@/actions/skus";
 import { Field, SubmitButton, useToastAction } from "@/components/ui";
 import { suggestSkuCode } from "@/lib/sku-code";
+import { WAREHOUSES } from "@/lib/validation";
 
 export type SkuFormValues = {
   id?: string;
@@ -13,6 +14,7 @@ export type SkuFormValues = {
   colour: string;
   pattern: string;
   otherIdentifiers: string;
+  warehouse: string;
   sellingPricePerMetre: string;
   lowStockThreshold: string;
 };
@@ -24,11 +26,13 @@ export const emptySku: SkuFormValues = {
   colour: "",
   pattern: "",
   otherIdentifiers: "",
+  warehouse: "Warehouse 1",
   sellingPricePerMetre: "",
   lowStockThreshold: "0",
 };
 
-export function SkuForm({ initial = emptySku, mode }: { initial?: SkuFormValues; mode: "create" | "edit" }) {
+export function SkuForm({ initial = emptySku, mode, allowedWarehouses = [] }: { initial?: SkuFormValues; mode: "create" | "edit"; allowedWarehouses?: string[] }) {
+  const visibleWarehouses = allowedWarehouses.length > 0 ? WAREHOUSES.filter((w) => allowedWarehouses.includes(w)) : WAREHOUSES;
   const [v, setV] = useState(initial);
   const [codeTouched, setCodeTouched] = useState(mode === "edit");
   const { formRef, formAction, errors } = useToastAction(mode === "create" ? createSkuAction : updateSkuAction, {
@@ -120,17 +124,31 @@ export function SkuForm({ initial = emptySku, mode }: { initial?: SkuFormValues;
           className="input font-mono"
         />
       </Field>
-      <Field label="Other identifiers" name="otherIdentifiers" error={errors.otherIdentifiers} hint="Width, GSM, lot number, notes (optional)">
-        <input
-          id="otherIdentifiers"
-          name="otherIdentifiers"
-          value={v.otherIdentifiers}
-          onChange={set("otherIdentifiers")}
-          maxLength={300}
-          placeholder="e.g. Width 58 inches, 140 GSM"
-          className="input"
-        />
-      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Other identifiers" name="otherIdentifiers" error={errors.otherIdentifiers} hint="Width, GSM, lot number, notes (optional)">
+          <input
+            id="otherIdentifiers"
+            name="otherIdentifiers"
+            value={v.otherIdentifiers}
+            onChange={set("otherIdentifiers")}
+            maxLength={300}
+            placeholder="e.g. Width 58 inches, 140 GSM"
+            className="input"
+          />
+        </Field>
+        <Field label="Warehouse" name="warehouse" error={errors.warehouse}>
+          <select
+            id="warehouse"
+            name="warehouse"
+            value={v.warehouse}
+            onChange={(e) => setV({ ...v, warehouse: e.target.value })}
+            required
+            className="input"
+          >
+            {visibleWarehouses.map((w) => <option key={w} value={w}>{w}</option>)}
+          </select>
+        </Field>
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Selling price per metre (₹)" name="sellingPricePerMetre" error={errors.sellingPricePerMetre}>
           <input
