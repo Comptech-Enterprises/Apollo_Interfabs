@@ -6,7 +6,7 @@ const MAX_AGE_SECONDS = 60 * 60 * 12; // 12 hours
 export type SessionPayload = {
   uid: string;
   name: string;
-  role: "MANAGER" | "SALES";
+  role: "OWNER" | "MANAGER" | "SALES";
   warehouses: string[];
 };
 
@@ -29,7 +29,7 @@ export async function verifySession(token?: string): Promise<SessionPayload | nu
   try {
     const { payload } = await jwtVerify(token, key());
     if (!payload.uid || !payload.role) return null;
-    return { uid: String(payload.uid), name: String(payload.name), role: payload.role as SessionPayload["role"], warehouses: (payload.warehouses as string[]) ?? [] };
+    return { uid: String(payload.uid), name: String(payload.name), role: payload.role as SessionPayload["role"], warehouses: (payload.warehouses as string[] | undefined) ?? [] };
   } catch {
     return null;
   }

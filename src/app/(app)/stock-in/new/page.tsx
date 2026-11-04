@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
-import { requireManager } from "@/lib/auth";
+import { requireOwnerOrManager } from "@/lib/auth";
 import { PageHeader } from "@/components/ui";
 import { todayIST } from "@/lib/validation";
 import { StockInForm } from "./StockInForm";
@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Record stock in", description: "Reco
 export const dynamic = "force-dynamic";
 
 export default async function NewStockIn({ searchParams }: { searchParams: Promise<{ sku?: string }> }) {
-  await requireManager();
+  await requireOwnerOrManager();
   const { sku } = await searchParams;
   const skus = await prisma.sku.findMany({ orderBy: { code: "asc" } });
   return (

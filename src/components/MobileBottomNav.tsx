@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 
 export function MobileBottomNav({ role }: { role: string }) {
   const pathname = usePathname();
-  const isManager = role === "MANAGER";
+  const canManageStock = role === "OWNER" || role === "MANAGER";
 
-  const links = isManager
+  const links = canManageStock
     ? [
         {
           href: "/dashboard",

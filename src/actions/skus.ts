@@ -17,7 +17,7 @@ function handle(e: unknown): ActionResult {
 
 export async function createSkuAction(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
   try {
-    const me = await actionUser("MANAGER");
+    const me = await actionUser("OWNER_OR_MANAGER");
     const p = skuSchema.safeParse(Object.fromEntries(fd));
     if (!p.success) return { ok: false, ...zodMessage(p.error) };
     const sku = await prisma.$transaction(async (tx) => {
@@ -36,7 +36,7 @@ export async function createSkuAction(_prev: ActionResult, fd: FormData): Promis
 
 export async function updateSkuAction(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
   try {
-    const me = await actionUser("MANAGER");
+    const me = await actionUser("OWNER_OR_MANAGER");
     const id = String(fd.get("id") ?? "");
     const p = skuSchema.safeParse(Object.fromEntries(fd));
     if (!p.success) return { ok: false, ...zodMessage(p.error) };
@@ -61,7 +61,7 @@ export async function updateSkuAction(_prev: ActionResult, fd: FormData): Promis
 
 export async function setSkuActiveAction(id: string, active: boolean): Promise<ActionResult> {
   try {
-    const me = await actionUser("MANAGER");
+    const me = await actionUser("OWNER_OR_MANAGER");
     await prisma.sku.update({ where: { id }, data: { active } });
     await prisma.auditLog.create({
       data: { actorId: me.uid, action: active ? "SKU_ACTIVATED" : "SKU_DEACTIVATED", entity: "Sku", entityId: id },

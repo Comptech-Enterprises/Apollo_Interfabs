@@ -48,7 +48,7 @@ export async function searchSkus(query: string, filters?: {
 
   if (user.warehouses.length > 0) where.warehouse = { in: user.warehouses };
 
-  if (user.role !== "MANAGER") where.active = true;
+  if (user.role !== "OWNER") where.active = true;
   else if (filters?.status === "active") where.active = true;
   else if (filters?.status === "inactive") where.active = false;
 

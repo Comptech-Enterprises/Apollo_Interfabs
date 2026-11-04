@@ -24,6 +24,7 @@ export function CreateUserForm() {
         <select id="role" name="role" defaultValue="SALES" className="input">
           <option value="SALES">Sales</option>
           <option value="MANAGER">Manager</option>
+          <option value="OWNER">Owner</option>
         </select>
       </Field>
       <Field label="Temporary password" name="password" error={errors.password} hint="At least 8 characters. They must change it at first sign-in.">

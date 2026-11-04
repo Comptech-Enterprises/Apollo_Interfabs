@@ -21,18 +21,25 @@ export async function requireUser(): Promise<CurrentUser> {
   return u;
 }
 
-export async function requireManager(): Promise<CurrentUser> {
+export async function requireOwner(): Promise<CurrentUser> {
   const u = await requireUser();
-  if (u.role !== "MANAGER") redirect("/forbidden");
+  if (u.role !== "OWNER") redirect("/forbidden");
+  return u;
+}
+
+export async function requireOwnerOrManager(): Promise<CurrentUser> {
+  const u = await requireUser();
+  if (u.role !== "OWNER" && u.role !== "MANAGER") redirect("/forbidden");
   return u;
 }
 
 /** For server actions: throw instead of redirect. */
 export class UserError extends Error {}
 
-export async function actionUser(role?: "MANAGER"): Promise<CurrentUser> {
+export async function actionUser(role?: "OWNER" | "OWNER_OR_MANAGER"): Promise<CurrentUser> {
   const u = await getCurrentUser();
   if (!u) throw new UserError("Your session has expired. Please sign in again.");
-  if (role && u.role !== role) throw new UserError("You do not have permission to do that.");
+  if (role === "OWNER" && u.role !== "OWNER") throw new UserError("You do not have permission to do that.");
+  if (role === "OWNER_OR_MANAGER" && u.role !== "OWNER" && u.role !== "MANAGER") throw new UserError("You do not have permission to do that.");
   return u;
 }

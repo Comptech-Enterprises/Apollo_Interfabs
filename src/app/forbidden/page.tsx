@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Access denied", description: "You do
 
 export default async function Forbidden() {
   const user = await requireUser();
-  const items = navItems.filter((i) => !i.manager || user.role === "MANAGER").map(({ href, label }) => ({ href, label }));
+  const items = navItems.filter((i) => !i.roles || i.roles.includes(user.role)).map(({ href, label }) => ({ href, label }));
   return (
     <div className="flex min-h-dvh flex-col">
       <Header items={items} userName={user.name} role={user.role} />

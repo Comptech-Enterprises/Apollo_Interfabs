@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
-import { requireManager } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import { PageHeader } from "@/components/ui";
 import { ActiveBadge } from "@/components/bits";
 import { formatDate } from "@/lib/format";
@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Users", description: "Manage manager
 export const dynamic = "force-dynamic";
 
 export default async function Users() {
-  const me = await requireManager();
+  const me = await requireOwner();
   const users = await prisma.user.findMany({ orderBy: [{ role: "asc" }, { name: "asc" }] });
   return (
     <>
@@ -23,7 +23,7 @@ export default async function Users() {
                 <div className="min-w-0">
                   <p className="break-words font-semibold">{u.name}{u.id === me.uid && <span className="ml-2 text-xs font-normal text-slate-500">(you)</span>}</p>
                   <p className="break-all text-sm text-slate-600">{u.email}</p>
-                  <p className="text-xs text-slate-500">{u.role === "MANAGER" ? "Manager" : "Sales"} - added {formatDate(u.createdAt)}</p>
+                  <p className="text-xs text-slate-500">{u.role === "OWNER" ? "Owner" : u.role === "MANAGER" ? "Manager" : "Sales"} - added {formatDate(u.createdAt)}</p>
                 </div>
                 <ActiveBadge active={u.active} />
               </div>

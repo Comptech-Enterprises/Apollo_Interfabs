@@ -12,6 +12,7 @@ export function Header({ items, userName, role }: { items: Item[]; userName: str
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
@@ -31,78 +32,100 @@ export function Header({ items, userName, role }: { items: Item[]; userName: str
   }, [open]);
 
   const active = (href: string) => pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
+  const roleLabel = role === "OWNER" ? "Owner" : role === "MANAGER" ? "Manager" : "Sales";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur transition-shadow duration-300">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-        <Logo />
-        <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
-          {items.map((i) => (
-            <Link
-              key={i.href}
-              href={i.href}
-              aria-current={active(i.href) ? "page" : undefined}
-              className={`rounded-lg px-3 py-2 text-sm font-medium active:scale-95 active:bg-slate-200/70 transition-all duration-150 cursor-pointer ${
-                active(i.href) ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              {i.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="hidden items-center gap-3 lg:flex">
-          <Link href="/account" className="text-right text-sm leading-tight hover:underline">
-            <span className="block font-medium">{userName}</span>
-            <span className="block text-xs text-slate-500">{role === "MANAGER" ? "Manager" : "Sales"}</span>
-          </Link>
-          <form action={logoutAction}>
-            <button className="btn-secondary min-h-0 py-1.5 px-3 text-xs">Sign out</button>
-          </form>
+    <>
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
+          <Logo />
+          <button
+            ref={btnRef}
+            type="button"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 active:scale-95 transition-all duration-150"
+            aria-expanded={open}
+            aria-controls="slide-menu"
+            aria-label={open ? "Close menu" : "Open menu"}
+            onClick={() => setOpen((o) => !o)}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              {open ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+            </svg>
+          </button>
         </div>
-        <button
-          ref={btnRef}
-          type="button"
-          className="btn-secondary lg:hidden"
-          aria-expanded={open}
-          aria-controls="mobile-menu"
-          aria-label={open ? "Close menu" : "Open menu"}
-          onClick={() => setOpen((o) => !o)}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-            {open ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
-          </svg>
-          <span className="sr-only sm:not-sr-only">Menu</span>
-        </button>
-      </div>
+      </header>
 
-      {open && (
-        <div id="mobile-menu" className="fixed inset-x-0 top-[61px] bottom-0 z-50 overflow-y-auto bg-white lg:hidden">
-          <nav aria-label="Mobile" className="flex flex-col gap-1 p-4 pb-24">
-            {items.map((i) => (
-              <Link
-                key={i.href}
-                href={i.href}
-                aria-current={active(i.href) ? "page" : undefined}
-                className={`rounded-lg px-4 py-3 text-base font-medium active:scale-[0.98] transition-all duration-150 ${
-                  active(i.href) ? "bg-brand-50 text-brand-700" : "text-slate-800 active:bg-slate-100"
-                }`}
-              >
-                {i.label}
-              </Link>
-            ))}
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-50 bg-black/30 backdrop-blur-sm transition-opacity duration-300 ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        onClick={() => setOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* Slide panel */}
+      <div
+        ref={panelRef}
+        id="slide-menu"
+        className={`fixed top-0 right-0 z-50 h-full w-72 max-w-[85vw] bg-white shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${open ? "translate-x-0" : "translate-x-full"}`}
+      >
+        <div className="flex h-full flex-col">
+          {/* Profile section */}
+          <div className="border-b border-slate-200 px-5 py-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-brand-700 font-bold text-sm">
+                {userName.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-slate-900">{userName}</p>
+                <p className="text-xs text-slate-500">{roleLabel}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Nav links */}
+          <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-3">
+            <div className="space-y-1">
+              {items.map((i) => (
+                <Link
+                  key={i.href}
+                  href={i.href}
+                  aria-current={active(i.href) ? "page" : undefined}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 active:scale-[0.98] ${
+                    active(i.href) ? "bg-brand-50 text-brand-700" : "text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  {i.label}
+                </Link>
+              ))}
+            </div>
+          </nav>
+
+          {/* Footer actions */}
+          <div className="border-t border-slate-200 px-3 py-3 space-y-1">
             <Link
               href="/account"
-              className="rounded-lg px-4 py-3 text-base font-medium text-slate-800 active:scale-[0.98] active:bg-slate-100 transition-all duration-150"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 active:scale-[0.98] transition-all duration-150"
             >
-              Account ({userName})
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="8" r="5" />
+                <path d="M20 21a8 8 0 1 0-16 0" />
+              </svg>
+              Account
             </Link>
-            <form action={logoutAction} className="mt-2">
-              <button className="btn-secondary w-full">Sign out</button>
+            <form action={logoutAction}>
+              <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 active:scale-[0.98] transition-all duration-150">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Sign out
+              </button>
             </form>
-            <ContactLinks className="mt-6 px-4 text-sm text-slate-600" />
-          </nav>
+            <ContactLinks className="mt-3 px-3 text-xs text-slate-400" />
+          </div>
         </div>
-      )}
-    </header>
+      </div>
+    </>
   );
 }

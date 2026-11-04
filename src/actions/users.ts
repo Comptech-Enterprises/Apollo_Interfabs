@@ -18,7 +18,7 @@ function handle(e: unknown): ActionResult {
 
 export async function createUserAction(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
   try {
-    const me = await actionUser("MANAGER");
+    const me = await actionUser("OWNER");
     const p = userSchema.safeParse(Object.fromEntries(fd));
     if (!p.success) return { ok: false, ...zodMessage(p.error) };
     const u = await prisma.user.create({
@@ -41,7 +41,7 @@ export async function createUserAction(_prev: ActionResult, fd: FormData): Promi
 
 export async function resetPasswordAction(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
   try {
-    const me = await actionUser("MANAGER");
+    const me = await actionUser("OWNER");
     const id = String(fd.get("id") ?? "");
     const password = String(fd.get("password") ?? "");
     if (password.length < 8) return { ok: false, message: "Password must be at least 8 characters." };
@@ -58,13 +58,13 @@ export async function resetPasswordAction(_prev: ActionResult, fd: FormData): Pr
 
 export async function setUserActiveAction(id: string, active: boolean): Promise<ActionResult> {
   try {
-    const me = await actionUser("MANAGER");
+    const me = await actionUser("OWNER");
     if (id === me.uid && !active) return { ok: false, message: "You cannot deactivate your own account." };
     if (!active) {
       const u = await prisma.user.findUnique({ where: { id } });
-      if (u?.role === "MANAGER") {
-        const others = await prisma.user.count({ where: { role: "MANAGER", active: true, id: { not: id } } });
-        if (others === 0) return { ok: false, message: "At least one active manager is required." };
+      if (u?.role === "OWNER") {
+        const others = await prisma.user.count({ where: { role: "OWNER", active: true, id: { not: id } } });
+        if (others === 0) return { ok: false, message: "At least one active owner is required." };
       }
     }
     await prisma.user.update({ where: { id }, data: { active } });

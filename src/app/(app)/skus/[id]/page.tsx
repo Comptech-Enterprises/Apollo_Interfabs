@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireManager } from "@/lib/auth";
+import { requireOwnerOrManager } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatDate, formatDateTime, formatMetres, formatPrice, isLowStock } from "@/lib/format";
 import { PageHeader } from "@/components/ui";
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "SKU details", description: "SKU deta
 export const dynamic = "force-dynamic";
 
 export default async function SkuDetail({ params }: { params: Promise<{ id: string }> }) {
-  await requireManager();
+  await requireOwnerOrManager();
   const { id } = await params;
   const s = await prisma.sku.findUnique({
     where: { id },

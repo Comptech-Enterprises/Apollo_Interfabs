@@ -24,7 +24,7 @@ function refresh(skuId: string) {
 
 export async function recordStockInAction(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
   try {
-    const me = await actionUser("MANAGER");
+    const me = await actionUser("OWNER_OR_MANAGER");
     const p = stockInSchema.safeParse(Object.fromEntries(fd));
     if (!p.success) return { ok: false, ...zodMessage(p.error) };
     const d = p.data;
@@ -91,7 +91,7 @@ export async function recordSaleAction(_prev: ActionResult, fd: FormData): Promi
 
 export async function voidSaleAction(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
   try {
-    const me = await actionUser("MANAGER");
+    const me = await actionUser("OWNER");
     const p = voidSchema.safeParse(Object.fromEntries(fd));
     if (!p.success) return { ok: false, ...zodMessage(p.error) };
     const skuId = await prisma.$transaction(async (tx) => {
@@ -115,7 +115,7 @@ export async function voidSaleAction(_prev: ActionResult, fd: FormData): Promise
 
 export async function voidStockInAction(_prev: ActionResult, fd: FormData): Promise<ActionResult> {
   try {
-    const me = await actionUser("MANAGER");
+    const me = await actionUser("OWNER_OR_MANAGER");
     const p = voidSchema.safeParse(Object.fromEntries(fd));
     if (!p.success) return { ok: false, ...zodMessage(p.error) };
     const skuId = await prisma.$transaction(async (tx) => {

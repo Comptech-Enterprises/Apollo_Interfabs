@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireManager } from "@/lib/auth";
+import { requireOwnerOrManager } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/ui";
 import { SkuForm } from "@/components/SkuForm";
@@ -9,7 +9,7 @@ import { SkuForm } from "@/components/SkuForm";
 export const metadata: Metadata = { title: "Edit SKU", description: "Edit a SKU, its selling price and low-stock threshold." };
 
 export default async function EditSku({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requireManager();
+  const user = await requireOwnerOrManager();
   const { id } = await params;
   const s = await prisma.sku.findUnique({ where: { id } });
   if (!s) notFound();

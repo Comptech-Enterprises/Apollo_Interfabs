@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requireManager } from "@/lib/auth";
+import { requireOwnerOrManager } from "@/lib/auth";
 import { PageHeader } from "@/components/ui";
 import { SkuForm } from "@/components/SkuForm";
 
 export const metadata: Metadata = { title: "Add SKU", description: "Add a new fabric SKU with its selling price and low-stock threshold." };
 
 export default async function NewSku() {
-  const user = await requireManager();
+  const user = await requireOwnerOrManager();
   return (
     <>
       <PageHeader title="Add SKU" actions={<Link href="/dashboard" className="btn-secondary">Back to Inventory</Link>} />

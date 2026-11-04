@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { requireManager } from "@/lib/auth";
+import { requireOwnerOrManager } from "@/lib/auth";
 import { formatMetres, formatPrice, isLowStock } from "@/lib/format";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { ActiveBadge, LowStockBadge } from "@/components/bits";
@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "SKUs", description: "Manage fabric S
 export const dynamic = "force-dynamic";
 
 export default async function SkuList({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  await requireManager();
+  await requireOwnerOrManager();
   const { q } = await searchParams;
   const tokens = q?.trim().split(/\s+/).filter(Boolean);
   const skus = await prisma.sku.findMany({

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { requireManager } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import { formatDate, formatMetres, formatPrice, toDateOnly } from "@/lib/format";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { Pagination, VoidedBadge } from "@/components/bits";
@@ -16,7 +16,7 @@ type SP = { sku?: string; buyer?: string; from?: string; to?: string; page?: str
 const isDate = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
 
 export default async function SalesLog({ searchParams }: { searchParams: Promise<SP> }) {
-  await requireManager();
+  await requireOwner();
   const sp = await searchParams;
   const where: Prisma.SaleWhereInput = {};
   if (sp.sku) where.skuId = sp.sku;
