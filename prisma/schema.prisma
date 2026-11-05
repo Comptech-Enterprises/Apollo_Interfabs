@@ -67,20 +67,32 @@ model StockIn {
 }
 
 model Sale {
-  id             String    @id @default(auto()) @map("_id") @db.ObjectId
-  skuId          String    @db.ObjectId
-  sku            Sku       @relation(fields: [skuId], references: [id])
-  quantityMetres Float
-  pricePerMetre  Float
-  saleDate       DateTime
-  buyerName      String?
-  createdById    String    @db.ObjectId
-  createdAt      DateTime  @default(now())
-  voidedAt       DateTime?
-  voidedById     String?   @db.ObjectId
-  voidReason     String?
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  skuId             String    @db.ObjectId
+  sku               Sku       @relation(fields: [skuId], references: [id])
+  quantityMetres    Float
+  pricePerMetre     Float
+  soldPricePerMetre Float
+  saleDate          DateTime
+  buyerName         String?
+  createdById       String    @db.ObjectId
+  createdAt         DateTime  @default(now())
+  voidedAt          DateTime?
+  voidedById        String?   @db.ObjectId
+  voidReason        String?
 
   @@index([skuId, saleDate])
+}
+
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read, createdAt])
 }
 
 model PriceChange {
@@ -91,6 +103,17 @@ model PriceChange {
   newPrice    Float
   changedById String   @db.ObjectId
   changedAt   DateTime @default(now())
+}
+
+model PurchaseOrder {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  companyName String
+  quantity    Float
+  description String?
+  createdById String   @db.ObjectId
+  createdAt   DateTime @default(now())
+
+  @@index([createdById, createdAt])
 }
 
 model AuditLog {

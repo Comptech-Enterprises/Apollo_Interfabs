@@ -18,7 +18,7 @@ async function main() {
     if (!u.email) throw new Error("Seed emails are missing in .env");
     await prisma.user.upsert({
       where: { email: u.email.toLowerCase() },
-      update: { role: u.role, warehouses: u.warehouses },
+      update: { role: u.role, warehouses: u.warehouses, passwordHash: hash, mustChangePassword: true },
       create: { ...u, email: u.email.toLowerCase(), passwordHash: hash, mustChangePassword: true },
     });
   }

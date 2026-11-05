@@ -17,6 +17,7 @@ export type NavItem = { href: string; label: string; roles?: string[] };
 /** Single source of truth for navigation, so there are no dead links. */
 export const navItems: NavItem[] = [
   { href: "/dashboard", label: "Inventory" },
+  { href: "/po", label: "PO", roles: ["OWNER", "SALES"] },
   { href: "/purchases", label: "Purchases", roles: ["OWNER", "MANAGER"] },
   { href: "/sales", label: "Sales Log", roles: ["OWNER"] },
   { href: "/users", label: "Users", roles: ["OWNER"] },

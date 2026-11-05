@@ -66,8 +66,15 @@ export const stockInSchema = z.object({
 export const saleSchema = z.object({
   skuId: text("SKU"),
   quantityMetres: money("Metres sold"),
+  soldPricePerMetre: money("Sold price"),
   saleDate: dateString,
-  buyerName: optionalText(100),
+  buyerName: text("Company name"),
+});
+
+export const purchaseOrderSchema = z.object({
+  companyName: text("Company name"),
+  quantity: money("Quantity"),
+  description: optionalText(300),
 });
 
 export const voidSchema = z.object({

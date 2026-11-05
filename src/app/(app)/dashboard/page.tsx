@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
   const user = await requireUser();
-  const isOwner = user.role === "OWNER";
   const canManageStock = user.role === "OWNER" || user.role === "MANAGER";
+  const isSales = user.role === "SALES";
   const facets = await getFacets();
 
   return (
@@ -27,6 +27,7 @@ export default async function Dashboard() {
           <Link href="/sales/new" className="btn-primary flex-1 text-center">Record Sale</Link>
           {canManageStock && <Link href="/purchases" className="btn-secondary flex-1 text-center">Record Purchase</Link>}
           {canManageStock && <Link href="/stock-in/new" className="btn-secondary flex-1 text-center">Record GR</Link>}
+          {isSales && <Link href="/po/new" className="btn-secondary flex-1 text-center">New PO</Link>}
         </div>
       </div>
       <InventorySearch isManager={canManageStock} facets={facets} />

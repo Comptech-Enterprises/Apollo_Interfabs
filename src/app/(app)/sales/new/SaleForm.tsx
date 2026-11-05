@@ -90,11 +90,14 @@ export function SaleForm({ skus, today }: { skus: Sku[]; today: string }) {
           className="input"
         />
       </Field>
+      <Field label="Sold price per metre" name="soldPricePerMetre" error={errors.soldPricePerMetre}>
+        <input id="soldPricePerMetre" name="soldPricePerMetre" type="number" step="0.01" min="0.01" inputMode="decimal" placeholder="e.g. 15.00" required className="input" />
+      </Field>
       <Field label="Sale date" name="saleDate" error={errors.saleDate}>
         <input id="saleDate" name="saleDate" type="date" defaultValue={today} max={today} required className="input" />
       </Field>
-      <Field label="Buyer name (optional)" name="buyerName" error={errors.buyerName}>
-        <input id="buyerName" name="buyerName" maxLength={100} autoComplete="off" placeholder="Optional buyer name" className="input" />
+      <Field label="Sold to (Company)" name="buyerName" error={errors.buyerName}>
+        <input id="buyerName" name="buyerName" maxLength={100} autoComplete="off" placeholder="Company name" required className="input" />
       </Field>
 
       {total !== null && (

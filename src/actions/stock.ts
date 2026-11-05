@@ -75,6 +75,7 @@ export async function recordSaleAction(_prev: ActionResult, fd: FormData): Promi
           skuId: d.skuId,
           quantityMetres: d.quantityMetres,
           pricePerMetre: sku.sellingPricePerMetre,
+          soldPricePerMetre: d.soldPricePerMetre,
           saleDate: toDateOnly(d.saleDate),
           buyerName: d.buyerName,
           createdById: me.uid,

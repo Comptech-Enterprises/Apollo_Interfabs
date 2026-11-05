@@ -24,6 +24,16 @@ export async function createSkuAction(_prev: ActionResult, fd: FormData): Promis
       const s = await tx.sku.create({ data: { ...p.data, createdById: me.uid } });
       await tx.priceChange.create({ data: { skuId: s.id, newPrice: s.sellingPricePerMetre, changedById: me.uid } });
       await tx.auditLog.create({ data: { actorId: me.uid, action: "SKU_CREATED", entity: "Sku", entityId: s.id, details: { code: s.code } } });
+      const owners = await tx.user.findMany({ where: { role: "OWNER", active: true }, select: { id: true } });
+      if (owners.length > 0) {
+        await tx.notification.createMany({
+          data: owners.map((o) => ({
+            userId: o.id,
+            message: `New SKU: ${s.code} added by ${me.name}`,
+            link: "/dashboard",
+          })),
+        });
+      }
       return s;
     });
     revalidatePath("/skus");

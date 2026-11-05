@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NewSale() {
   await requireUser();
-  const skus = await prisma.sku.findMany({ where: { active: true }, orderBy: { code: "asc" } });
+  const skus = await prisma.sku.findMany({ where: { active: true, sellingPricePerMetre: { gt: 0 } }, orderBy: { code: "asc" } });
   return (
     <>
       <PageHeader title="Record sale" />

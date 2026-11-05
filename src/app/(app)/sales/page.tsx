@@ -70,34 +70,41 @@ export default async function SalesLog({ searchParams }: { searchParams: Promise
           <div className="card hidden overflow-x-auto p-0 md:block sm:p-0">
             <table className="w-full min-w-[760px]">
               <thead className="border-b border-slate-200 bg-slate-50"><tr>
-                <th className="th">Date</th><th className="th">SKU</th><th className="th text-right">Metres</th><th className="th text-right">Price / m</th><th className="th">Buyer</th><th className="th"><span className="sr-only">Actions</span></th>
+                <th className="th">Date</th><th className="th">SKU</th><th className="th text-right">Metres</th><th className="th text-right">Sale Price</th><th className="th text-right">Sold Price</th><th className="th">Buyer</th><th className="th"><span className="sr-only">Actions</span></th>
               </tr></thead>
               <tbody className="divide-y divide-slate-100">
-                {rows.map((r) => (
-                  <tr key={r.id} className={r.voidedAt ? "text-slate-400 line-through decoration-slate-300" : ""}>
-                    <td className="td">{formatDate(r.saleDate)}</td>
-                    <td className="td font-mono font-semibold"><Link href={`/skus/${r.skuId}`} className="hover:underline">{r.sku.code}</Link></td>
-                    <td className="td text-right">{formatMetres(r.quantityMetres)}</td>
-                    <td className="td text-right">{formatPrice(r.pricePerMetre)}</td>
-                    <td className="td">{r.buyerName ?? "-"}</td>
-                    <td className="td text-right">{r.voidedAt ? <VoidedBadge /> : <VoidButton id={r.id} kind="sale" label={`${r.sku.code}, ${formatMetres(r.quantityMetres)}`} />}</td>
-                  </tr>
-                ))}
+                {rows.map((r) => {
+                  const bg = r.voidedAt ? "" : r.soldPricePerMetre < r.pricePerMetre ? "bg-red-50" : r.soldPricePerMetre > r.pricePerMetre ? "bg-green-50" : "";
+                  return (
+                    <tr key={r.id} className={`${r.voidedAt ? "text-slate-400 line-through decoration-slate-300" : ""} ${bg}`}>
+                      <td className="td">{formatDate(r.saleDate)}</td>
+                      <td className="td font-mono font-semibold"><Link href={`/skus/${r.skuId}`} className="hover:underline">{r.sku.code}</Link></td>
+                      <td className="td text-right">{formatMetres(r.quantityMetres)}</td>
+                      <td className="td text-right">{formatPrice(r.pricePerMetre)}</td>
+                      <td className="td text-right font-semibold">{formatPrice(r.soldPricePerMetre)}</td>
+                      <td className="td">{r.buyerName ?? "-"}</td>
+                      <td className="td text-right">{r.voidedAt ? <VoidedBadge /> : <VoidButton id={r.id} kind="sale" label={`${r.sku.code}, ${formatMetres(r.quantityMetres)}`} />}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
           <ul className="space-y-3 md:hidden">
-            {rows.map((r) => (
-              <li key={r.id} className={`card hover:shadow-md hover:-translate-y-0.5 ${r.voidedAt ? "opacity-60" : ""}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <Link href={`/skus/${r.skuId}`} className="break-all font-mono font-bold text-brand-700">{r.sku.code}</Link>
-                  <span className="shrink-0 text-sm text-slate-600">{formatDate(r.saleDate)}</span>
-                </div>
-                <p className="mt-1 text-sm">{formatMetres(r.quantityMetres)} at {formatPrice(r.pricePerMetre)}/m</p>
-                <p className="break-words text-sm text-slate-600">Buyer: {r.buyerName ?? "-"}</p>
-                <div className="mt-3">{r.voidedAt ? <VoidedBadge /> : <VoidButton id={r.id} kind="sale" label={`${r.sku.code}, ${formatMetres(r.quantityMetres)}`} />}</div>
-              </li>
-            ))}
+            {rows.map((r) => {
+              const bg = r.voidedAt ? "" : r.soldPricePerMetre < r.pricePerMetre ? "bg-red-50 border-red-200" : r.soldPricePerMetre > r.pricePerMetre ? "bg-green-50 border-green-200" : "";
+              return (
+                <li key={r.id} className={`card hover:shadow-md hover:-translate-y-0.5 ${r.voidedAt ? "opacity-60" : ""} ${bg}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <Link href={`/skus/${r.skuId}`} className="break-all font-mono font-bold text-brand-700">{r.sku.code}</Link>
+                    <span className="shrink-0 text-sm text-slate-600">{formatDate(r.saleDate)}</span>
+                  </div>
+                  <p className="mt-1 text-sm">{formatMetres(r.quantityMetres)} — Sale: {formatPrice(r.pricePerMetre)}/m, Sold: {formatPrice(r.soldPricePerMetre)}/m</p>
+                  <p className="break-words text-sm text-slate-600">Buyer: {r.buyerName ?? "-"}</p>
+                  <div className="mt-3">{r.voidedAt ? <VoidedBadge /> : <VoidButton id={r.id} kind="sale" label={`${r.sku.code}, ${formatMetres(r.quantityMetres)}`} />}</div>
+                </li>
+              );
+            })}
           </ul>
           <Pagination page={page} pages={Math.ceil(count / PAGE)} basePath="/sales" params={{ sku: sp.sku, buyer: sp.buyer, from: sp.from, to: sp.to }} />
         </>
