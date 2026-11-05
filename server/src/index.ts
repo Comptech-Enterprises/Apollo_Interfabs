@@ -491,27 +491,23 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ ok: false, message: "Internal server error" });
 });
 
-async function start() {
-  try {
-    if (process.env.DATABASE_URL) {
-      await connectDB();
-      console.log("Connected to MongoDB via Mongoose.");
-    } else {
-      console.warn("DATABASE_URL is not set. Database not connected yet.");
+if (!process.env.VERCEL) {
+  (async () => {
+    try {
+      if (process.env.DATABASE_URL) {
+        await connectDB();
+        console.log("Connected to MongoDB via Mongoose.");
+      } else {
+        console.warn("DATABASE_URL is not set. Database not connected yet.");
+      }
+    } catch (err) {
+      console.error("Failed to connect to MongoDB:", err);
     }
-  } catch (err) {
-    console.error("Failed to connect to MongoDB:", err);
-  }
-
-  // Only call listen if running directly (not imported as a serverless function)
-  if (process.env.NODE_ENV !== "test") {
     app.listen(PORT, () => {
       console.log(`Apollo API running on http://localhost:${PORT}`);
     });
-  }
+  })();
 }
-
-start();
 
 export default app;
 export { app };
