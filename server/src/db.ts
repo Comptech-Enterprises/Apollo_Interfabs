@@ -12,10 +12,16 @@ export async function connectDB(): Promise<typeof mongoose> {
     throw new Error("DATABASE_URL environment variable is missing.");
   }
 
-  const conn = await mongoose.connect(url, {
-    retryWrites: false,
-    directConnection: true,
-  });
+  const isLocal = url.includes("localhost") || url.includes("127.0.0.1");
+  const isSrv = url.startsWith("mongodb+srv://");
+
+  const options: mongoose.ConnectOptions = {};
+  if (isLocal && !isSrv) {
+    options.retryWrites = false;
+    options.directConnection = true;
+  }
+
+  const conn = await mongoose.connect(url, options);
   isConnected = true;
   return conn;
 }
