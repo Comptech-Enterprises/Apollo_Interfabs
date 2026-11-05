@@ -7,7 +7,7 @@ import { passwordSchema, zodMessage } from "../validation.js";
 const router = Router();
 
 const attempts = new Map<string, { n: number; first: number }>();
-const WINDOW = 15 * 60 * 1000;
+const WINDOW = 60 * 1000;
 
 function tooMany(key: string) {
   const a = attempts.get(key);
@@ -34,7 +34,7 @@ router.post("/login", async (req, res) => {
 
   const key = String(username).trim().toLowerCase();
   if (tooMany(key)) {
-    res.status(429).json({ ok: false, message: "Too many failed attempts. Please wait 15 minutes." });
+    res.status(429).json({ ok: false, message: "Too many failed attempts. Please wait 1 minute." });
     return;
   }
 
