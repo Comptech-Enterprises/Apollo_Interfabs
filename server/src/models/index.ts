@@ -122,6 +122,8 @@ export const Sku: Model<ISku> = mongoose.models.Sku || mongoose.model<ISku>("Sku
 // ==========================================
 // StockIn
 // ==========================================
+export type QualityStatus = "APPROVED" | "REJECTED" | "PENDING";
+
 export interface IStockIn {
   _id: Types.ObjectId;
   skuId: Types.ObjectId;
@@ -129,6 +131,10 @@ export interface IStockIn {
   quantityMetres: number;
   purchaseDate: Date;
   costPricePerMetre: number;
+  qualityStatus: QualityStatus;
+  qualityReviewedById?: Types.ObjectId | null;
+  qualityReviewedAt?: Date | null;
+  qualityNotes?: string | null;
   createdById: Types.ObjectId;
   createdAt: Date;
   voidedAt?: Date | null;
@@ -145,6 +151,14 @@ const stockInSchema = new Schema<IStockIn>(
     quantityMetres: { type: Number, required: true },
     purchaseDate: { type: Date, required: true },
     costPricePerMetre: { type: Number, required: true },
+    qualityStatus: {
+      type: String,
+      enum: ["APPROVED", "REJECTED", "PENDING"],
+      default: "PENDING",
+    },
+    qualityReviewedById: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    qualityReviewedAt: { type: Date, default: null },
+    qualityNotes: { type: String, default: null, trim: true },
     createdById: { type: Schema.Types.ObjectId, ref: "User", required: true },
     createdAt: { type: Date, default: Date.now },
     voidedAt: { type: Date, default: null },
@@ -284,6 +298,9 @@ export const PriceChange: Model<IPriceChange> =
 export interface IPurchaseOrder {
   _id: Types.ObjectId;
   companyName: string;
+  billFrom?: string | null;
+  supplierName?: string | null;
+  poDate?: Date | null;
   quantity: number;
   description?: string | null;
   skuId?: Types.ObjectId | string | null;
@@ -298,6 +315,9 @@ export type PurchaseOrderDocument = Document<Types.ObjectId, {}, IPurchaseOrder>
 const purchaseOrderSchema = new Schema<IPurchaseOrder>(
   {
     companyName: { type: String, required: true, trim: true },
+    billFrom: { type: String, default: null, trim: true },
+    supplierName: { type: String, default: null, trim: true },
+    poDate: { type: Date, default: Date.now },
     quantity: { type: Number, required: true },
     description: { type: String, default: null, trim: true },
     skuId: { type: Schema.Types.ObjectId, ref: "Sku", default: null },

@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 import { apiStock, apiSkus } from "@/lib/api";
 import { formatDate, formatMetres, formatPrice } from "@/lib/format";
 import { EmptyState, PageHeader } from "@/components/ui";
-import { Pagination, VoidedBadge } from "@/components/bits";
+import { Pagination, VoidedBadge, QualityBadge } from "@/components/bits";
 import { VoidButton } from "@/components/VoidButton";
 
 export function PurchasesPage() {
+  const { user } = useAuth();
+  const canReview = user?.role === "OWNER" || user?.role === "MANAGER";
+
   const [skus, setSkus] = useState<any[]>([]);
-  const [filters, setFilters] = useState({ sku: "", supplier: "", from: "", to: "" });
+  const [filters, setFilters] = useState({ sku: "", supplier: "", quality: "", from: "", to: "" });
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{ rows: any[]; count: number; page: number; pages: number }>({
     rows: [],
@@ -28,6 +33,7 @@ export function PurchasesPage() {
       .getPurchases({
         sku: f.sku || undefined,
         supplier: f.supplier || undefined,
+        quality: f.quality || undefined,
         from: f.from || undefined,
         to: f.to || undefined,
         page: p,
@@ -48,25 +54,40 @@ export function PurchasesPage() {
   };
 
   const handleReset = () => {
-    const empty = { sku: "", supplier: "", from: "", to: "" };
+    const empty = { sku: "", supplier: "", quality: "", from: "", to: "" };
     setFilters(empty);
     setPage(1);
     loadPurchases(1, empty);
   };
 
-  const filtered = Boolean(filters.sku || filters.supplier || filters.from || filters.to);
+  const handleQualityChange = async (id: string, newStatus: "APPROVED" | "REJECTED" | "PENDING") => {
+    try {
+      await apiStock.updateQualityStatus(id, newStatus);
+      const label = newStatus === "APPROVED" ? "Approved" : newStatus === "REJECTED" ? "Rejected" : "Pending";
+      toast.success(`Quality status updated to ${label}`);
+      setData((prev) => ({
+        ...prev,
+        rows: prev.rows.map((r) => (r.id === id ? { ...r, qualityStatus: newStatus } : r)),
+      }));
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update quality status");
+    }
+  };
+
+  const filtered = Boolean(filters.sku || filters.supplier || filters.quality || filters.from || filters.to);
 
   return (
     <>
       <PageHeader
         title="Purchase log"
+        subtitle="Track fabric arrivals and review quality assurance status."
         actions={
           <Link to="/stock-in/new" className="btn-primary">
             Record stock in
           </Link>
         }
       />
-      <form onSubmit={handleFilterSubmit} role="search" className="card mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <form onSubmit={handleFilterSubmit} role="search" className="card mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <div>
           <label htmlFor="sku" className="mb-1 block text-sm font-medium">SKU / Fabric</label>
           <select
@@ -97,6 +118,21 @@ export function PurchasesPage() {
           />
         </div>
         <div>
+          <label htmlFor="quality" className="mb-1 block text-sm font-medium">Quality status</label>
+          <select
+            id="quality"
+            name="quality"
+            value={filters.quality}
+            onChange={(e) => setFilters((f) => ({ ...f, quality: e.target.value }))}
+            className="input"
+          >
+            <option value="">All statuses</option>
+            <option value="APPROVED">Approved</option>
+            <option value="PENDING">Pending Review</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+        </div>
+        <div>
           <label htmlFor="from" className="mb-1 block text-sm font-medium">From</label>
           <input
             id="from"
@@ -119,7 +155,7 @@ export function PurchasesPage() {
           />
         </div>
         <div className="flex items-end gap-2">
-          <button type="submit" className="btn-primary cursor-pointer">Filter</button>
+          <button type="submit" className="btn-primary cursor-pointer flex-1">Filter</button>
           {filtered && (
             <button type="button" onClick={handleReset} className="btn-secondary cursor-pointer">
               Clear
@@ -138,80 +174,135 @@ export function PurchasesPage() {
       ) : (
         <>
           <div className="card hidden overflow-x-auto p-0 md:block sm:p-0">
-            <table className="w-full min-w-[760px]">
-              <thead className="border-b border-slate-200 bg-slate-50">
+            <table className="w-full min-w-[820px]">
+              <thead className="border-b border-red-100 bg-red-50/50">
                 <tr>
                   <th className="th">Date</th>
                   <th className="th">SKU</th>
                   <th className="th">Supplier</th>
                   <th className="th text-right">Metres</th>
                   <th className="th text-right">Cost / m</th>
+                  <th className="th">Quality status</th>
                   <th className="th"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {data.rows.map((r) => (
-                  <tr
-                    key={r.id}
-                    className={r.voidedAt ? "text-slate-400 line-through decoration-slate-300" : ""}
-                  >
-                    <td className="td">{formatDate(r.purchaseDate)}</td>
-                    <td className="td font-mono font-semibold">
-                      <Link to={`/skus/${r.skuId}`} className="hover:underline">
-                        {r.sku?.code ?? "—"}
-                      </Link>
-                    </td>
-                    <td className="td">{r.supplierName}</td>
-                    <td className="td text-right">{formatMetres(r.quantityMetres)}</td>
-                    <td className="td text-right">{formatPrice(r.costPricePerMetre)}</td>
-                    <td className="td text-right">
-                      {r.voidedAt ? (
-                        <VoidedBadge />
-                      ) : (
-                        <VoidButton
-                          id={r.id}
-                          kind="stockin"
-                          label={`${r.sku?.code ?? "Purchase"}, ${formatMetres(r.quantityMetres)}`}
-                          onSuccess={() => loadPurchases()}
-                        />
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {data.rows.map((r) => {
+                  const status = r.qualityStatus || "APPROVED";
+                  return (
+                    <tr
+                      key={r.id}
+                      className={r.voidedAt ? "text-slate-400 line-through decoration-slate-300" : ""}
+                    >
+                      <td className="td">{formatDate(r.purchaseDate)}</td>
+                      <td className="td font-mono font-semibold">
+                        <Link to={`/skus/${r.skuId}`} className="hover:underline">
+                          {r.sku?.code ?? "—"}
+                        </Link>
+                      </td>
+                      <td className="td">{r.supplierName}</td>
+                      <td className="td text-right font-mono font-medium">{formatMetres(r.quantityMetres)}</td>
+                      <td className="td text-right">{formatPrice(r.costPricePerMetre)}</td>
+                      <td className="td">
+                        {r.voidedAt ? (
+                          <QualityBadge status={r.qualityStatus} />
+                        ) : canReview ? (
+                          <select
+                            value={status}
+                            onChange={(e) => handleQualityChange(r.id, e.target.value as any)}
+                            className={`rounded-lg border px-2 py-1 text-xs font-semibold cursor-pointer focus:outline-none transition-colors ${
+                              status === "APPROVED"
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100/80"
+                                : status === "REJECTED"
+                                ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-100/80"
+                                : "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100/80"
+                            }`}
+                            aria-label={`Quality status for ${r.sku?.code ?? "item"}`}
+                          >
+                            <option value="APPROVED">Approved</option>
+                            <option value="PENDING">Pending Review</option>
+                            <option value="REJECTED">Rejected</option>
+                          </select>
+                        ) : (
+                          <QualityBadge status={r.qualityStatus} />
+                        )}
+                      </td>
+                      <td className="td text-right">
+                        {r.voidedAt ? (
+                          <VoidedBadge />
+                        ) : (
+                          <VoidButton
+                            id={r.id}
+                            kind="stockin"
+                            label={`${r.sku?.code ?? "Purchase"}, ${formatMetres(r.quantityMetres)}`}
+                            onSuccess={() => loadPurchases()}
+                          />
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
           <ul className="space-y-3 md:hidden">
-            {data.rows.map((r) => (
-              <li
-                key={r.id}
-                className={`card hover:shadow-md hover:-translate-y-0.5 ${r.voidedAt ? "opacity-60" : ""}`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <Link to={`/skus/${r.skuId}`} className="break-all font-mono font-bold text-brand-700">
-                    {r.sku?.code ?? "—"}
-                  </Link>
-                  <span className="shrink-0 text-sm text-slate-600">{formatDate(r.purchaseDate)}</span>
-                </div>
-                <p className="mt-1 break-words text-sm">{r.supplierName}</p>
-                <p className="mt-1 text-sm">
-                  {formatMetres(r.quantityMetres)} - {formatPrice(r.costPricePerMetre)}/m
-                </p>
-                <div className="mt-3">
-                  {r.voidedAt ? (
-                    <VoidedBadge />
-                  ) : (
-                    <VoidButton
-                      id={r.id}
-                      kind="stockin"
-                      label={`${r.sku?.code ?? "Purchase"}, ${formatMetres(r.quantityMetres)}`}
-                      onSuccess={() => loadPurchases()}
-                    />
-                  )}
-                </div>
-              </li>
-            ))}
+            {data.rows.map((r) => {
+              const status = r.qualityStatus || "APPROVED";
+              return (
+                <li
+                  key={r.id}
+                  className={`card hover:shadow-md hover:-translate-y-0.5 ${r.voidedAt ? "opacity-60" : ""}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <Link to={`/skus/${r.skuId}`} className="break-all font-mono font-bold text-red-700">
+                      {r.sku?.code ?? "—"}
+                    </Link>
+                    <span className="shrink-0 text-sm text-slate-600">{formatDate(r.purchaseDate)}</span>
+                  </div>
+                  <p className="mt-1 break-words text-sm font-medium">{r.supplierName}</p>
+                  <p className="mt-1 text-sm font-mono text-slate-700">
+                    {formatMetres(r.quantityMetres)} - {formatPrice(r.costPricePerMetre)}/m
+                  </p>
+
+                  <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-xs">
+                    <span className="text-slate-500 font-medium">Quality status:</span>
+                    {canReview && !r.voidedAt ? (
+                      <select
+                        value={status}
+                        onChange={(e) => handleQualityChange(r.id, e.target.value as any)}
+                        className={`rounded-lg border px-2 py-0.5 text-xs font-semibold cursor-pointer focus:outline-none ${
+                          status === "APPROVED"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                            : status === "REJECTED"
+                            ? "border-red-200 bg-red-50 text-red-700"
+                            : "border-amber-200 bg-amber-50 text-amber-800"
+                        }`}
+                      >
+                        <option value="APPROVED">Approved</option>
+                        <option value="PENDING">Pending Review</option>
+                        <option value="REJECTED">Rejected</option>
+                      </select>
+                    ) : (
+                      <QualityBadge status={r.qualityStatus} />
+                    )}
+                  </div>
+
+                  <div className="mt-3">
+                    {r.voidedAt ? (
+                      <VoidedBadge />
+                    ) : (
+                      <VoidButton
+                        id={r.id}
+                        kind="stockin"
+                        label={`${r.sku?.code ?? "Purchase"}, ${formatMetres(r.quantityMetres)}`}
+                        onSuccess={() => loadPurchases()}
+                      />
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
 
           <Pagination page={data.page} pages={data.pages} onPageChange={setPage} />

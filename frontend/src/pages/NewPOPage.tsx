@@ -2,10 +2,13 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { apiPo } from "@/lib/api";
+import { todayIST } from "@/lib/validation";
 import { Field, PageHeader, SubmitButton } from "@/components/ui";
 
 export function NewPOPage() {
-  const [companyName, setCompanyName] = useState("");
+  const [billFrom, setBillFrom] = useState("");
+  const [supplierName, setSupplierName] = useState("");
+  const [poDate, setPoDate] = useState(todayIST());
   const [itemName, setItemName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [description, setDescription] = useState("");
@@ -15,8 +18,8 @@ export function NewPOPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyName.trim()) {
-      setErrors({ companyName: "Enter company name" });
+    if (!billFrom.trim()) {
+      setErrors({ billFrom: "Enter Bill from entity / company" });
       return;
     }
     if (!itemName.trim()) {
@@ -33,7 +36,9 @@ export function NewPOPage() {
     setErrors({});
     try {
       const res = await apiPo.create({
-        companyName: companyName.trim(),
+        billFrom: billFrom.trim(),
+        supplierName: supplierName.trim() || undefined,
+        poDate,
         itemName: itemName.trim(),
         quantity: q,
         description: description.trim() || undefined,
@@ -53,33 +58,62 @@ export function NewPOPage() {
       <PageHeader title="New Purchase Order" subtitle="Submit a client request for fabric procurement." />
       <div className="mx-auto max-w-xl">
         <form onSubmit={handleSubmit} className="card space-y-4" noValidate>
-          <Field label="Company requesting" name="companyName" error={errors.companyName}>
-            <input
-              id="companyName"
-              name="companyName"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              maxLength={100}
-              autoComplete="off"
-              placeholder="Which company wants this?"
-              required
-              className="input"
-            />
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Bill from" name="billFrom" error={errors.billFrom}>
+              <input
+                id="billFrom"
+                name="billFrom"
+                value={billFrom}
+                onChange={(e) => setBillFrom(e.target.value)}
+                maxLength={100}
+                autoComplete="off"
+                placeholder="e.g. Apollo Interfabs"
+                required
+                className="input"
+              />
+            </Field>
 
-          <Field label="Item name" name="itemName" error={errors.itemName}>
-            <input
-              id="itemName"
-              name="itemName"
-              value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-              maxLength={100}
-              autoComplete="off"
-              placeholder="e.g. Black Polyester Suiting, Cotton Cambric"
-              required
-              className="input"
-            />
-          </Field>
+            <Field label="Supplier name" name="supplierName" error={errors.supplierName}>
+              <input
+                id="supplierName"
+                name="supplierName"
+                value={supplierName}
+                onChange={(e) => setSupplierName(e.target.value)}
+                maxLength={100}
+                autoComplete="off"
+                placeholder="e.g. Vardhman Textiles"
+                className="input"
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="PO Date" name="poDate" error={errors.poDate}>
+              <input
+                id="poDate"
+                name="poDate"
+                type="date"
+                value={poDate}
+                onChange={(e) => setPoDate(e.target.value)}
+                required
+                className="input"
+              />
+            </Field>
+
+            <Field label="Item name" name="itemName" error={errors.itemName}>
+              <input
+                id="itemName"
+                name="itemName"
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+                maxLength={100}
+                autoComplete="off"
+                placeholder="e.g. Black Polyester Suiting"
+                required
+                className="input"
+              />
+            </Field>
+          </div>
 
           <Field label="Quantity needed (metres)" name="quantity" error={errors.quantity}>
             <input

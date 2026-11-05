@@ -36,16 +36,23 @@ router.post("/", async (req, res) => {
     return;
   }
 
+  const billFrom = p.data.billFrom || p.data.companyName || "Apollo Interfabs";
+  const supplierName = p.data.supplierName || null;
+  const poDate = p.data.poDate ? new Date(`${p.data.poDate}T00:00:00.000Z`) : new Date();
+
   await withTransaction(async (session) => {
     await PurchaseOrder.create(
       [
         {
-          companyName: p.data.companyName,
+          companyName: billFrom,
+          billFrom,
+          supplierName,
+          poDate,
           quantity: p.data.quantity,
           description: p.data.description,
           skuId: p.data.skuId || undefined,
           skuCode: p.data.skuCode || undefined,
-          itemName: p.data.itemName || undefined,
+          itemName: p.data.itemName,
           createdById: me.uid,
         },
       ],
@@ -54,11 +61,11 @@ router.post("/", async (req, res) => {
 
     const owners = await User.find({ role: "OWNER", active: true }).select("_id").session(session || null);
     if (owners.length > 0) {
-      const itemInfo = p.data.itemName ? ` (${p.data.itemName})` : p.data.skuCode ? ` (${p.data.skuCode})` : "";
+      const suppInfo = supplierName ? ` | Supplier: ${supplierName}` : "";
       await Notification.insertMany(
         owners.map((o) => ({
           userId: o._id,
-          message: `New PO: ${p.data.companyName}${itemInfo} — ${p.data.quantity}m by ${me.name}`,
+          message: `New PO: ${p.data.itemName} — ${p.data.quantity}m (Bill from: ${billFrom}${suppInfo}) by ${me.name}`,
           link: "/po",
         })),
         { session }

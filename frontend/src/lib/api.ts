@@ -112,6 +112,11 @@ export const apiStock = {
       method: "POST",
       body: JSON.stringify({ id, reason }),
     }),
+  updateQualityStatus: (id: string, qualityStatus: "APPROVED" | "REJECTED" | "PENDING", notes?: string) =>
+    apiFetch<{ ok: boolean; message: string; qualityStatus: string }>(`/stock/stockin/${id}/quality`, {
+      method: "PATCH",
+      body: JSON.stringify({ qualityStatus, notes }),
+    }),
   getSales: (params: Record<string, string | number | undefined> = {}) => {
     const q = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) {

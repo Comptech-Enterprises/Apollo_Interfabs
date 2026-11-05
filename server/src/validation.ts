@@ -49,6 +49,15 @@ export const stockInSchema = z.object({
   quantityMetres: money("Quantity"),
   purchaseDate: dateString,
   costPricePerMetre: money("Cost price"),
+  qualityStatus: z.enum(["APPROVED", "REJECTED", "PENDING"]).optional().default("APPROVED"),
+  qualityNotes: optionalText(300),
+});
+
+export const updateQualitySchema = z.object({
+  qualityStatus: z.enum(["APPROVED", "REJECTED", "PENDING"], {
+    errorMap: () => ({ message: "Status must be APPROVED, REJECTED, or PENDING" }),
+  }),
+  notes: optionalText(300),
 });
 
 export const saleSchema = z.object({
@@ -59,14 +68,22 @@ export const saleSchema = z.object({
   buyerName: text("Company name"),
 });
 
-export const purchaseOrderSchema = z.object({
-  companyName: text("Company name"),
-  itemName: text("Item name"),
-  quantity: money("Quantity"),
-  description: optionalText(300),
-  skuId: optionalText(100),
-  skuCode: optionalText(50),
-});
+export const purchaseOrderSchema = z
+  .object({
+    billFrom: optionalText(100),
+    companyName: optionalText(100),
+    supplierName: optionalText(100),
+    poDate: dateString.optional(),
+    itemName: text("Item name"),
+    quantity: money("Quantity"),
+    description: optionalText(300),
+    skuId: optionalText(100),
+    skuCode: optionalText(50),
+  })
+  .refine((data) => Boolean(data.billFrom || data.companyName), {
+    message: "Enter Bill from entity or company name",
+    path: ["billFrom"],
+  });
 
 export const voidSchema = z.object({
   id: text("Entry"),

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { Sku, StockIn, Sale, AuditLog, withTransaction } from "../db.js";
 import { requireAuth, requireRole, type AuthenticatedRequest } from "../middleware/auth.js";
-import { stockInSchema, saleSchema, voidSchema, zodMessage } from "../validation.js";
+import { stockInSchema, saleSchema, voidSchema, updateQualitySchema, zodMessage } from "../validation.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -40,6 +40,7 @@ router.post("/stock-in", requireRole("OWNER", "MANAGER"), async (req, res) => {
             quantityMetres: d.quantityMetres,
             purchaseDate: toDateOnly(d.purchaseDate),
             costPricePerMetre: d.costPricePerMetre,
+            qualityStatus: "PENDING",
             createdById: me.uid,
           },
         ],
@@ -173,6 +174,50 @@ router.post("/void-sale", requireRole("OWNER"), async (req, res) => {
   }
 });
 
+router.patch("/stockin/:id/quality", requireRole("OWNER", "MANAGER"), async (req, res) => {
+  const me = (req as unknown as AuthenticatedRequest).user;
+  const p = updateQualitySchema.safeParse(req.body);
+  if (!p.success) {
+    res.status(400).json({ ok: false, ...zodMessage(p.error) });
+    return;
+  }
+
+  try {
+    const si = await StockIn.findById(req.params.id);
+    if (!si) {
+      res.status(404).json({ ok: false, message: "Purchase entry not found." });
+      return;
+    }
+
+    const prevStatus = si.qualityStatus;
+    si.qualityStatus = p.data.qualityStatus;
+    si.qualityReviewedById = me.uid as any;
+    si.qualityReviewedAt = new Date();
+    if (p.data.notes !== undefined) {
+      si.qualityNotes = p.data.notes;
+    }
+    await si.save();
+
+    await AuditLog.create([
+      {
+        actorId: me.uid,
+        action: "STOCKIN_QUALITY_UPDATED",
+        entity: "StockIn",
+        entityId: si.id || si._id.toString(),
+        details: { previous: prevStatus, current: p.data.qualityStatus, notes: p.data.notes },
+      },
+    ]);
+
+    res.json({
+      ok: true,
+      message: `Quality status updated to ${p.data.qualityStatus}.`,
+      qualityStatus: si.qualityStatus,
+    });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, message: e.message || "Failed to update quality status" });
+  }
+});
+
 router.post("/void-stockin", requireRole("OWNER", "MANAGER"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const p = voidSchema.safeParse(req.body);
@@ -251,19 +296,37 @@ router.get("/sales", requireRole("OWNER"), async (req, res) => {
 
 router.get("/purchases", requireRole("OWNER", "MANAGER"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
+  const { sku, supplier, quality, from, to } = req.query;
   const page = Math.max(1, Number(req.query.page) || 1);
   const PAGE = 25;
   const filter: Record<string, any> = {};
 
+  if (sku && sku !== "all") filter.skuId = sku;
+  if (supplier) filter.supplierName = new RegExp(escapeRegex(String(supplier)), "i");
+  if (quality) filter.qualityStatus = quality;
+  if (from || to) {
+    filter.purchaseDate = {};
+    if (from) filter.purchaseDate.$gte = new Date(`${from}T00:00:00.000Z`);
+    if (to) filter.purchaseDate.$lte = new Date(`${to}T23:59:59.999Z`);
+  }
+
   if (me.warehouses && me.warehouses.length > 0) {
     const warehouseSkus = await Sku.find({ warehouse: { $in: me.warehouses } }).select("_id").lean();
-    filter.skuId = { $in: warehouseSkus.map((s) => s._id) };
+    if (filter.skuId) {
+      // intersect if already set
+      const ids = warehouseSkus.map((s) => String(s._id));
+      if (!ids.includes(String(filter.skuId))) {
+        filter.skuId = { $in: [] };
+      }
+    } else {
+      filter.skuId = { $in: warehouseSkus.map((s) => s._id) };
+    }
   }
 
   const [rows, count] = await Promise.all([
     StockIn.find(filter)
       .sort({ purchaseDate: -1, createdAt: -1 })
-      .populate({ path: "sku", select: "code warehouse" })
+      .populate({ path: "sku", select: "code warehouse fabricName" })
       .skip((page - 1) * PAGE)
       .limit(PAGE),
     StockIn.countDocuments(filter),

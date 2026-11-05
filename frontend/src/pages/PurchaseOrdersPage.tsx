@@ -56,7 +56,13 @@ export function PurchaseOrdersPage() {
               <thead>
                 <tr className="border-b border-red-100 bg-red-50/50">
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Company
+                    Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Bill From
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Supplier Name
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Item
@@ -70,16 +76,21 @@ export function PurchaseOrdersPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Description
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Date
-                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {data.rows.map((r) => (
                   <tr key={r.id} className="hover:bg-red-50/40 transition-colors duration-150">
-                    <td className="px-4 py-3.5 font-semibold text-slate-900">{r.companyName}</td>
-                    <td className="px-4 py-3.5 text-sm font-medium text-slate-800">
+                    <td className="px-4 py-3.5 text-sm text-slate-600 font-medium">
+                      {formatDate(r.poDate || r.createdAt)}
+                    </td>
+                    <td className="px-4 py-3.5 font-semibold text-slate-900">
+                      {r.billFrom || r.companyName}
+                    </td>
+                    <td className="px-4 py-3.5 text-sm text-slate-700">
+                      {r.supplierName || "—"}
+                    </td>
+                    <td className="px-4 py-3.5 text-sm font-medium text-slate-900">
                       {r.itemName || "—"}
                     </td>
                     <td className="px-4 py-3.5 text-right font-mono font-medium text-red-600">
@@ -87,7 +98,6 @@ export function PurchaseOrdersPage() {
                     </td>
                     <td className="px-4 py-3.5 text-sm text-slate-600">{r.createdByName ?? "Unknown"}</td>
                     <td className="px-4 py-3.5 text-sm text-slate-500 max-w-xs truncate">{r.description || "—"}</td>
-                    <td className="px-4 py-3.5 text-right text-sm text-slate-400">{formatDate(r.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -103,9 +113,12 @@ export function PurchaseOrdersPage() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-semibold text-slate-900">{r.companyName}</p>
+                    <p className="font-semibold text-slate-900">{r.billFrom || r.companyName}</p>
                     {r.itemName && (
-                      <p className="text-xs font-medium text-slate-700 mt-0.5">{r.itemName}</p>
+                      <p className="text-xs font-medium text-slate-800 mt-0.5">{r.itemName}</p>
+                    )}
+                    {r.supplierName && (
+                      <p className="text-xs text-slate-500">Supplier: {r.supplierName}</p>
                     )}
                   </div>
                   <span className="shrink-0 rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-bold text-red-600">
@@ -113,7 +126,7 @@ export function PurchaseOrdersPage() {
                   </span>
                 </div>
                 <p className="mt-1.5 text-sm text-slate-500">
-                  by {r.createdByName ?? "Unknown"} · {formatDate(r.createdAt)}
+                  by {r.createdByName ?? "Unknown"} · {formatDate(r.poDate || r.createdAt)}
                 </p>
                 {r.description && <p className="mt-2 text-sm text-slate-400 italic">{r.description}</p>}
               </li>
