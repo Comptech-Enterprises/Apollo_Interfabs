@@ -67,6 +67,9 @@ export interface ISku {
   colour: string;
   pattern?: string | null;
   otherIdentifiers?: string | null;
+  sizeInch?: number | null;
+  sizeMtr?: number | null;
+  uom?: string | null;
   warehouse: string;
   sellingPricePerMetre: number;
   lowStockThreshold: number;
@@ -87,6 +90,9 @@ const skuSchema = new Schema<ISku>(
     colour: { type: String, required: true, trim: true },
     pattern: { type: String, default: null, trim: true },
     otherIdentifiers: { type: String, default: null, trim: true },
+    sizeInch: { type: Number, default: null },
+    sizeMtr: { type: Number, default: null },
+    uom: { type: String, default: null, trim: true },
     warehouse: { type: String, default: "Warehouse 1", trim: true },
     sellingPricePerMetre: { type: Number, required: true },
     lowStockThreshold: { type: Number, default: 0 },
