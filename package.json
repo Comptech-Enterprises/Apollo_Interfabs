@@ -1,48 +1,18 @@
 {
-  "name": "apollo-interfabs-inventory",
+  "name": "apollo-interfabs",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "server",
+    "frontend"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "prisma generate && next build",
-    "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "db:push": "prisma db push",
-    "db:seed": "tsx --env-file=.env prisma/seed.ts",
-    "db:seed:demo": "tsx --env-file=.env prisma/seed.ts --demo",
-    "test": "vitest run"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
-  "dependencies": {
-    "@prisma/client": "^6.0.0",
-    "bcryptjs": "^2.4.3",
-    "jose": "^5.9.0",
-    "next": "^15.1.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "sonner": "^1.7.0",
-    "zod": "^3.24.0"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4.0.0",
-    "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "postcss": "^8.4.0",
-    "prisma": "^6.0.0",
-    "tailwindcss": "^4.0.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5.7.0",
-    "vitest": "^2.1.0"
-  },
-  "allowScripts": {
-    "prisma@6.19.3": true,
-    "esbuild@0.28.2": true,
-    "esbuild@0.21.5": true,
-    "fsevents@2.3.3": true
+    "dev:server": "npm --prefix server run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:server": "npm --prefix server run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "build": "npm run build:server && npm run build:frontend",
+    "seed": "npm --prefix server run seed",
+    "seed:demo": "npm --prefix server run seed:demo"
   }
 }
