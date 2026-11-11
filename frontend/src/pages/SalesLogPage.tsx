@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import { apiStock, apiSkus } from "@/lib/api";
 import { formatDate, formatMetres, formatPrice } from "@/lib/format";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { Pagination, VoidedBadge } from "@/components/bits";
 import { VoidButton } from "@/components/VoidButton";
+import { TableSkeleton } from "@/components/TableSkeleton";
 
 export function SalesLogPage() {
+  const { user } = useAuth();
+  const isOwner = user?.role === "OWNER";
   const [skus, setSkus] = useState<any[]>([]);
   const [filters, setFilters] = useState({ sku: "", buyer: "", from: "", to: "" });
   const [page, setPage] = useState(1);
@@ -58,10 +62,19 @@ export function SalesLogPage() {
 
   return (
     <>
-      <PageHeader title="Sales log" />
-      <form onSubmit={handleFilterSubmit} role="search" className="card mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <PageHeader
+        title="Sales log"
+        actions={
+          !isOwner ? (
+            <Link to="/sales/new" className="btn-primary">
+              Record sale
+            </Link>
+          ) : null
+        }
+      />
+      <form onSubmit={handleFilterSubmit} role="search" className="card mb-4 grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div>
-          <label htmlFor="sku" className="mb-1 block text-sm font-medium">SKU / Fabric</label>
+          <label htmlFor="sku" className="mb-1 block text-sm font-medium text-slate-700">SKU / Fabric</label>
           <select
             id="sku"
             name="sku"
@@ -78,7 +91,7 @@ export function SalesLogPage() {
           </select>
         </div>
         <div>
-          <label htmlFor="buyer" className="mb-1 block text-sm font-medium">Buyer</label>
+          <label htmlFor="buyer" className="mb-1 block text-sm font-medium text-slate-700">Buyer</label>
           <input
             id="buyer"
             name="buyer"
@@ -90,7 +103,7 @@ export function SalesLogPage() {
           />
         </div>
         <div>
-          <label htmlFor="from" className="mb-1 block text-sm font-medium">From</label>
+          <label htmlFor="from" className="mb-1 block text-sm font-medium text-slate-700">From</label>
           <input
             id="from"
             name="from"
@@ -101,7 +114,7 @@ export function SalesLogPage() {
           />
         </div>
         <div>
-          <label htmlFor="to" className="mb-1 block text-sm font-medium">To</label>
+          <label htmlFor="to" className="mb-1 block text-sm font-medium text-slate-700">To</label>
           <input
             id="to"
             name="to"
@@ -111,8 +124,8 @@ export function SalesLogPage() {
             className="input"
           />
         </div>
-        <div className="flex items-end gap-2">
-          <button type="submit" className="btn-primary cursor-pointer">Filter</button>
+        <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-1">
+          <button type="submit" className="btn-primary flex-1 cursor-pointer">Filter</button>
           {filtered && (
             <button type="button" onClick={handleReset} className="btn-secondary cursor-pointer">
               Clear
@@ -122,7 +135,7 @@ export function SalesLogPage() {
       </form>
 
       {loading && data.rows.length === 0 ? (
-        <div className="card text-center py-12 text-slate-500">Loading sales...</div>
+        <TableSkeleton cols={isOwner ? 7 : 6} />
       ) : data.rows.length === 0 ? (
         <EmptyState
           title={filtered ? "No sales match your filters" : "No sales recorded yet"}
@@ -130,17 +143,17 @@ export function SalesLogPage() {
         />
       ) : (
         <>
-          <div className="card hidden overflow-x-auto p-0 md:block sm:p-0">
+          <div className="hidden overflow-x-auto rounded-xl border border-red-100/90 bg-white/95 shadow-xs shadow-red-500/5 md:block">
             <table className="w-full min-w-[760px]">
-              <thead className="border-b border-slate-200 bg-slate-50">
+              <thead className="border-b border-red-100 bg-red-50/50">
                 <tr>
                   <th className="th">Date</th>
                   <th className="th">SKU</th>
                   <th className="th text-right">Metres</th>
                   <th className="th text-right">Sale Price</th>
                   <th className="th text-right">Sold Price</th>
-                  <th className="th">Buyer</th>
-                  <th className="th"><span className="sr-only">Actions</span></th>
+                  <th className="th pl-6">Buyer</th>
+                  {isOwner && <th className="th text-right"><span className="sr-only">Actions</span></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -148,37 +161,39 @@ export function SalesLogPage() {
                   const bg = r.voidedAt
                     ? ""
                     : r.soldPricePerMetre < r.pricePerMetre
-                    ? "bg-red-50"
+                    ? "bg-red-50/80 hover:bg-red-100/60"
                     : r.soldPricePerMetre > r.pricePerMetre
-                    ? "bg-green-50"
-                    : "";
+                    ? "bg-emerald-50/70 hover:bg-emerald-100/60"
+                    : "hover:bg-red-50/40";
                   return (
                     <tr
                       key={r.id}
                       className={`${r.voidedAt ? "text-slate-400 line-through decoration-slate-300" : ""} ${bg}`}
                     >
-                      <td className="td">{formatDate(r.saleDate)}</td>
-                      <td className="td font-mono font-semibold">
+                      <td className="td whitespace-nowrap text-slate-600">{formatDate(r.saleDate)}</td>
+                      <td className="td font-mono font-semibold text-red-700">
                         <Link to={`/skus/${r.skuId}`} className="hover:underline">
                           {r.sku?.code ?? "—"}
                         </Link>
                       </td>
-                      <td className="td text-right">{formatMetres(r.quantityMetres)}</td>
-                      <td className="td text-right">{formatPrice(r.pricePerMetre)}</td>
-                      <td className="td text-right font-semibold">{formatPrice(r.soldPricePerMetre)}</td>
-                      <td className="td">{r.buyerName ?? "-"}</td>
-                      <td className="td text-right">
-                        {r.voidedAt ? (
-                          <VoidedBadge />
-                        ) : (
-                          <VoidButton
-                            id={r.id}
-                            kind="sale"
-                            label={`${r.sku?.code ?? "Sale"}, ${formatMetres(r.quantityMetres)}`}
-                            onSuccess={() => loadSales()}
-                          />
-                        )}
-                      </td>
+                      <td className="td text-right font-mono whitespace-nowrap">{formatMetres(r.quantityMetres)}</td>
+                      <td className="td text-right font-mono whitespace-nowrap">{formatPrice(r.pricePerMetre)}</td>
+                      <td className="td text-right font-mono font-semibold whitespace-nowrap">{formatPrice(r.soldPricePerMetre)}</td>
+                      <td className="td pl-6">{r.buyerName ?? "-"}</td>
+                      {isOwner && (
+                        <td className="td text-right">
+                          {r.voidedAt ? (
+                            <VoidedBadge />
+                          ) : (
+                            <VoidButton
+                              id={r.id}
+                              kind="sale"
+                              label={`${r.sku?.code ?? "Sale"}, ${formatMetres(r.quantityMetres)}`}
+                              onSuccess={() => loadSales()}
+                            />
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -213,14 +228,14 @@ export function SalesLogPage() {
                   <div className="mt-3">
                     {r.voidedAt ? (
                       <VoidedBadge />
-                    ) : (
+                    ) : isOwner ? (
                       <VoidButton
                         id={r.id}
                         kind="sale"
                         label={`${r.sku?.code ?? "Sale"}, ${formatMetres(r.quantityMetres)}`}
                         onSuccess={() => loadSales()}
                       />
-                    )}
+                    ) : null}
                   </div>
                 </li>
               );

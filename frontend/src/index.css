@@ -30,6 +30,29 @@ body {
                 box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
                 background-color 0.2s ease;
   }
+  :where(select).input {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 3rem;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.15rem 1.15rem;
+    cursor: pointer;
+  }
+  .select-badge {
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 1.75rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 0.45rem center;
+    background-repeat: no-repeat;
+    background-size: 0.9rem 0.9rem;
+  }
+  :where(input[type="date"]).input {
+    height: 3rem;
+  }
   .btn-primary {
     @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 active:scale-[0.97] active:brightness-95 active:translate-y-px cursor-pointer select-none disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 hover:shadow-md hover:shadow-red-500/25;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -52,10 +75,10 @@ body {
     @apply border-red-200;
   }
   .th {
-    @apply px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+    @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500;
   }
   .td {
-    @apply px-3 py-3 text-sm text-slate-800;
+    @apply px-4 py-3.5 text-sm text-slate-800;
   }
 }
 
@@ -76,10 +99,10 @@ body {
 }
 
 /* Table row hover */
-tbody tr {
+:where(tbody tr) {
   transition: background-color 0.15s ease;
 }
-tbody tr:hover {
+:where(tbody tr):hover {
   background-color: rgb(254 242 242 / 0.5); /* light red tint on hover */
 }
 

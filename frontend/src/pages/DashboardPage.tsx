@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { apiSkus } from "@/lib/api";
-import { formatMetres, formatPrice, isLowStock } from "@/lib/format";
+import { formatMetres, formatPrice, isLowStock, stockColor } from "@/lib/format";
 import { ActiveBadge, LowStockBadge, OutBadge } from "@/components/bits";
 
 type Sku = {
@@ -22,47 +22,10 @@ type Sku = {
 
 type Facets = { types: string[]; colours: string[]; patterns: string[] };
 
-function stockColor(qty: number): {
-  card: string;
-  badge: string;
-  code: string;
-  sub: string;
-} {
-  if (qty < 25) {
-    return {
-      card: "bg-red-50/80 border-red-200",
-      badge: "bg-red-100 text-red-700",
-      code: "text-red-700",
-      sub: "text-red-900",
-    };
-  }
-  if (qty < 100) {
-    return {
-      card: "bg-orange-50/80 border-orange-200",
-      badge: "bg-orange-100 text-orange-800",
-      code: "text-blue-900",
-      sub: "text-orange-950",
-    };
-  }
-  if (qty <= 400) {
-    return {
-      card: "bg-blue-50/80 border-blue-200",
-      badge: "bg-blue-100 text-blue-700",
-      code: "text-blue-700",
-      sub: "text-blue-950",
-    };
-  }
-  return {
-    card: "bg-purple-50/80 border-purple-200",
-    badge: "bg-purple-100 text-purple-700",
-    code: "text-purple-700",
-    sub: "text-purple-950",
-  };
-}
-
 export function DashboardPage() {
   const { user } = useAuth();
-  const canManageStock = user?.role === "OWNER" || user?.role === "MANAGER";
+  const isOwner = user?.role === "OWNER";
+  const canManageStock = isOwner || user?.role === "MANAGER";
   const isSales = user?.role === "SALES";
 
   const [query, setQuery] = useState("");
@@ -86,6 +49,7 @@ export function DashboardPage() {
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const skipNextSearchRef = useRef(false);
 
   useEffect(() => {
     apiSkus.facets().then(setFacets).catch(console.error);
@@ -97,6 +61,7 @@ export function DashboardPage() {
       try {
         const data = await apiSkus.list(q.trim());
         const filtered = data.filter((s: Sku) => {
+          if (isSales && (!s.sellingPricePerMetre || Number(s.sellingPricePerMetre) <= 0)) return false;
           if (f.type && s.fabricType !== f.type) return false;
           if (f.colour && s.colour !== f.colour) return false;
           if (f.pattern && s.pattern !== f.pattern) return false;
@@ -120,11 +85,15 @@ export function DashboardPage() {
         setSearching(false);
       }
     },
-    []
+    [isSales]
   );
 
   // Debounced search when query changes
   useEffect(() => {
+    if (skipNextSearchRef.current) {
+      skipNextSearchRef.current = false;
+      return;
+    }
     const timer = setTimeout(() => {
       if (query.trim().length > 0) {
         doSearch(query, filters);
@@ -150,6 +119,7 @@ export function DashboardPage() {
   }, []);
 
   const handleSelect = (s: Sku) => {
+    skipNextSearchRef.current = true;
     setSelected(s);
     setShowSuggestions(false);
     setQuery(s.code);
@@ -204,26 +174,28 @@ export function DashboardPage() {
         <div className="mb-4 flex items-end justify-between">
           <h1 className="text-2xl font-bold text-slate-900">Inventory</h1>
         </div>
-        <div className="flex gap-2">
-          <Link to="/sales/new" className="btn-primary flex-1 text-center">
-            Record Sale
-          </Link>
-          {canManageStock && (
-            <Link to="/purchases" className="btn-secondary flex-1 text-center">
-              Record Purchase
+        {!isOwner && (
+          <div className="flex gap-2">
+            <Link to="/sales/new" className="btn-primary flex-1 text-center">
+              Record Sale
             </Link>
-          )}
-          {canManageStock && (
-            <Link to="/stock-in/new" className="btn-secondary flex-1 text-center">
-              Record GR
-            </Link>
-          )}
-          {isSales && (
-            <Link to="/po/new" className="btn-secondary flex-1 text-center">
-              New PO
-            </Link>
-          )}
-        </div>
+            {canManageStock && (
+              <Link to="/purchases" className="btn-secondary flex-1 text-center">
+                Record Purchase
+              </Link>
+            )}
+            {canManageStock && (
+              <Link to="/stock-in/new" className="btn-secondary flex-1 text-center">
+                Record GR
+              </Link>
+            )}
+            {isSales && (
+              <Link to="/po/new" className="btn-secondary flex-1 text-center">
+                New PO
+              </Link>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Centered Search Bar */}
@@ -307,46 +279,57 @@ export function DashboardPage() {
         </div>
 
         {/* Suggestions dropdown */}
-        {showSuggestions && suggestions.length > 0 && (
+        {showSuggestions && query.trim().length > 0 && (suggestions.length > 0 || !searching) && (
           <div className="absolute z-30 mt-2 max-h-80 w-full overflow-auto rounded-2xl border border-red-100 bg-white shadow-xl shadow-red-500/10">
-            <ul>
-              {suggestions.map((s, i) => {
-                const sc = stockColor(Number(s.currentStock));
-                return (
-                  <li
-                    key={s.id}
-                    onMouseDown={() => handleSelect(s)}
-                    onMouseEnter={() => setHighlightIndex(i)}
-                    className={`cursor-pointer ${sc.card} transition-all duration-150 ${
-                      i === highlightIndex ? "brightness-95" : ""
-                    }`}
-                  >
-                    <div className={`px-4 py-3 ${i > 0 ? "border-t border-inherit" : ""}`}>
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <span className={`font-mono font-bold ${sc.code}`}>{s.code}</span>
-                          <span className="ml-2 font-semibold text-slate-800 text-sm">{s.fabricName}</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs">
-                          <span className={`rounded-full px-2 py-0.5 font-bold ${sc.badge}`}>
-                            {formatMetres(s.currentStock)}
-                          </span>
-                          {s.sellingPricePerMetre !== undefined && (
-                            <span className="font-semibold text-slate-700">
-                              {formatPrice(s.sellingPricePerMetre)}/m
+            {suggestions.length > 0 ? (
+              <ul>
+                {suggestions.map((s, i) => {
+                  const sc = stockColor(Number(s.currentStock));
+                  const hasPrice = s.sellingPricePerMetre !== undefined && Number(s.sellingPricePerMetre) > 0;
+                  return (
+                    <li
+                      key={s.id}
+                      onMouseDown={() => handleSelect(s)}
+                      onMouseEnter={() => setHighlightIndex(i)}
+                      className={`cursor-pointer ${sc.card} transition-all duration-150 ${
+                        i === highlightIndex ? "brightness-95" : ""
+                      }`}
+                    >
+                      <div className={`px-4 py-3 ${i > 0 ? "border-t border-inherit" : ""}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <span className={`font-mono font-bold ${sc.code}`}>{s.code}</span>
+                            <span className="ml-2 font-semibold text-slate-800 text-sm">{s.fabricName}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs">
+                            <span className={`rounded-full px-2 py-0.5 font-bold ${sc.badge}`}>
+                              {formatMetres(s.currentStock)}
                             </span>
-                          )}
+                            {(isOwner || isSales) && s.sellingPricePerMetre !== undefined && (
+                              hasPrice ? (
+                                <span className="font-semibold text-slate-700">
+                                  {formatPrice(s.sellingPricePerMetre)}/m
+                                </span>
+                              ) : (
+                                <span className="font-semibold text-red-600">No price</span>
+                              )
+                            )}
+                          </div>
                         </div>
+                        <p className="mt-0.5 text-xs text-slate-600 opacity-80">
+                          {s.fabricType} · {s.colour}
+                          {s.pattern ? ` · ${s.pattern}` : ""} · {s.warehouse}
+                        </p>
                       </div>
-                      <p className="mt-0.5 text-xs text-slate-600 opacity-80">
-                        {s.fabricType} · {s.colour}
-                        {s.pattern ? ` · ${s.pattern}` : ""} · {s.warehouse}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className="px-4 py-3 text-sm text-slate-500">
+                No matching SKUs found.
+              </div>
+            )}
           </div>
         )}
 
@@ -359,7 +342,7 @@ export function DashboardPage() {
                 <select
                   value={filters.type}
                   onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                  className="input min-h-10 py-1.5 text-sm"
+                  className="input h-10 min-h-10 py-1.5 text-sm"
                 >
                   <option value="">All</option>
                   {facets.types.map((t) => (
@@ -374,7 +357,7 @@ export function DashboardPage() {
                 <select
                   value={filters.colour}
                   onChange={(e) => setFilters({ ...filters, colour: e.target.value })}
-                  className="input min-h-10 py-1.5 text-sm"
+                  className="input h-10 min-h-10 py-1.5 text-sm"
                 >
                   <option value="">All</option>
                   {facets.colours.map((c) => (
@@ -389,7 +372,7 @@ export function DashboardPage() {
                 <select
                   value={filters.pattern}
                   onChange={(e) => setFilters({ ...filters, pattern: e.target.value })}
-                  className="input min-h-10 py-1.5 text-sm"
+                  className="input h-10 min-h-10 py-1.5 text-sm"
                 >
                   <option value="">All</option>
                   {facets.patterns.map((p) => (
@@ -405,7 +388,7 @@ export function DashboardPage() {
                   <select
                     value={filters.status}
                     onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                    className="input min-h-10 py-1.5 text-sm"
+                    className="input h-10 min-h-10 py-1.5 text-sm"
                   >
                     <option value="">All</option>
                     <option value="active">Active only</option>
@@ -478,10 +461,16 @@ export function DashboardPage() {
               <p className="text-xs text-slate-500">In Stock</p>
               <p className="text-base font-bold text-slate-900">{formatMetres(selected.currentStock)}</p>
             </div>
-            {selected.sellingPricePerMetre !== undefined && (
+            {(isOwner || isSales) && selected.sellingPricePerMetre !== undefined && (
               <div>
                 <p className="text-xs text-slate-500">Price / Metre</p>
-                <p className="text-base font-bold text-slate-900">{formatPrice(selected.sellingPricePerMetre)}</p>
+                <p className="text-base font-bold text-slate-900">
+                  {Number(selected.sellingPricePerMetre) > 0 ? (
+                    formatPrice(selected.sellingPricePerMetre)
+                  ) : (
+                    <span className="text-red-600 text-sm">Not set</span>
+                  )}
+                </p>
               </div>
             )}
             <div>
@@ -497,10 +486,12 @@ export function DashboardPage() {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link to="/sales/new" className="btn-primary flex-1 text-center text-xs">
-              Sell this SKU
-            </Link>
-            {canManageStock && (
+            {!isOwner && (
+              <Link to={`/sales/new?sku=${selected.id}`} className="btn-primary flex-1 text-center text-xs">
+                Sell this SKU
+              </Link>
+            )}
+            {canManageStock && !isOwner && (
               <Link to={`/stock-in/new?sku=${selected.id}`} className="btn-secondary flex-1 text-center text-xs">
                 Stock in
               </Link>
@@ -524,6 +515,7 @@ export function DashboardPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             {results.map((s) => {
               const sc = stockColor(Number(s.currentStock));
+              const hasPrice = s.sellingPricePerMetre !== undefined && Number(s.sellingPricePerMetre) > 0;
               return (
                 <div
                   key={s.id}
@@ -552,10 +544,14 @@ export function DashboardPage() {
                       )}
                       {Number(s.currentStock) <= 0 && <OutBadge />}
                     </div>
-                    {s.sellingPricePerMetre !== undefined && (
-                      <span className="font-semibold text-slate-800">
-                        {formatPrice(s.sellingPricePerMetre)}/m
-                      </span>
+                    {(isOwner || isSales) && s.sellingPricePerMetre !== undefined && (
+                      hasPrice ? (
+                        <span className="font-semibold text-slate-800">
+                          {formatPrice(s.sellingPricePerMetre)}/m
+                        </span>
+                      ) : (
+                        <span className="text-xs font-semibold text-red-600">Price not set</span>
+                      )
                     )}
                   </div>
                 </div>

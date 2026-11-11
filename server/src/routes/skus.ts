@@ -38,8 +38,11 @@ router.get("/", async (req, res) => {
   if (me.role !== "OWNER") {
     filter.active = true;
   }
+  if (me.role === "SALES") {
+    filter.sellingPricePerMetre = { $gt: 0 };
+  }
 
-  const skus = await Sku.find(filter).sort({ code: 1 }).limit(50);
+  const skus = await Sku.find(filter).sort({ code: 1 }).limit(500);
   res.json(
     skus.map((s) => ({
       id: s.id || s._id.toString(),
@@ -53,16 +56,28 @@ router.get("/", async (req, res) => {
       currentStock: Number(s.currentStock),
       lowStockThreshold: Number(s.lowStockThreshold),
       active: s.active,
-      ...(me.role === "OWNER" ? { sellingPricePerMetre: Number(s.sellingPricePerMetre) } : {}),
+      sellingPricePerMetre: Number(s.sellingPricePerMetre),
     }))
   );
 });
 
-router.get("/facets", async (_req, res) => {
+router.get("/facets", async (req, res) => {
+  const me = (req as unknown as AuthenticatedRequest).user;
+  const filter: Record<string, any> = {};
+  if (me.warehouses && me.warehouses.length > 0) {
+    filter.warehouse = { $in: me.warehouses };
+  }
+  if (me.role !== "OWNER") {
+    filter.active = true;
+  }
+  if (me.role === "SALES") {
+    filter.sellingPricePerMetre = { $gt: 0 };
+  }
+
   const [types, colours, patterns] = await Promise.all([
-    Sku.distinct("fabricType"),
-    Sku.distinct("colour"),
-    Sku.distinct("pattern"),
+    Sku.distinct("fabricType", filter),
+    Sku.distinct("colour", filter),
+    Sku.distinct("pattern", filter),
   ]);
 
   res.json({

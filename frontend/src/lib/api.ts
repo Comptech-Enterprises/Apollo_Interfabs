@@ -145,11 +145,20 @@ export const apiStock = {
 
 // Purchase Orders
 export const apiPo = {
-  list: (page = 1) => apiFetch<{ rows: any[]; count: number; page: number; pages: number }>(`/po?page=${page}`),
+  list: (page = 1, status?: string) => {
+    const q = new URLSearchParams({ page: String(page) });
+    if (status) q.set("status", status);
+    return apiFetch<{ rows: any[]; count: number; page: number; pages: number }>(`/po?${q}`);
+  },
   create: (data: any) => apiFetch<{ ok: boolean; message: string }>("/po", {
     method: "POST",
     body: JSON.stringify(data),
   }),
+  review: (id: string, data: { status: "APPROVED" | "REJECTED"; note?: string }) =>
+    apiFetch<{ ok: boolean; message: string }>(`/po/${id}/review`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
 };
 
 // Notifications

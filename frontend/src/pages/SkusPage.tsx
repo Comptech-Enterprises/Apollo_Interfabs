@@ -5,6 +5,7 @@ import { apiSkus } from "@/lib/api";
 import { formatMetres, formatPrice, isLowStock } from "@/lib/format";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { ActiveBadge, LowStockBadge } from "@/components/bits";
+import { CardSkeleton } from "@/components/TableSkeleton";
 
 export function SkusPage() {
   const { user } = useAuth();
@@ -66,7 +67,9 @@ export function SkusPage() {
       </form>
 
       {loading ? (
-        <div className="card text-center py-12 text-slate-500">Loading SKUs...</div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }, (_, i) => <CardSkeleton key={i} />)}
+        </div>
       ) : skus.length === 0 ? (
         <EmptyState
           title={q ? "No SKUs match your search" : "No SKUs yet"}

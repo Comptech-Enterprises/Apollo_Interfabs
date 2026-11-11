@@ -6,6 +6,7 @@ import { formatDate, formatDateTime, formatMetres, formatPrice, isLowStock } fro
 import { PageHeader } from "@/components/ui";
 import { ActiveBadge, LowStockBadge, VoidedBadge } from "@/components/bits";
 import { SkuActiveToggle } from "@/components/SkuActiveToggle";
+import { CardSkeleton } from "@/components/TableSkeleton";
 import { VoidButton } from "@/components/VoidButton";
 
 export function SkuDetailPage() {
@@ -29,7 +30,7 @@ export function SkuDetailPage() {
   }, [id]);
 
   if (loading) {
-    return <div className="card text-center py-12 text-slate-500">Loading SKU details...</div>;
+    return <div className="mx-auto max-w-2xl"><CardSkeleton /></div>;
   }
 
   if (!sku) {
@@ -49,9 +50,11 @@ export function SkuDetailPage() {
         title={sku.code}
         actions={
           <>
-            <Link to={`/stock-in/new?sku=${sku.id}`} className="btn-primary">
-              Record stock in
-            </Link>
+            {user?.role !== "OWNER" && (
+              <Link to={`/stock-in/new?sku=${sku.id}`} className="btn-primary">
+                Record stock in
+              </Link>
+            )}
             <Link to={`/skus/${sku.id}/edit`} className="btn-secondary">
               Edit
             </Link>

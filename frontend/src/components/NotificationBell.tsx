@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiNotifications } from "@/lib/api";
 
 type Note = { id: string; message: string; link: string | null; read: boolean; createdAt: string };
 
 export function NotificationBell() {
+  const navigate = useNavigate();
   const [count, setCount] = useState(0);
   const [notes, setNotes] = useState<Note[]>([]);
   const [open, setOpen] = useState(false);
@@ -84,7 +86,16 @@ export function NotificationBell() {
           ) : (
             <ul className="divide-y divide-red-50">
               {notes.map((n) => (
-                <li key={n.id} className={`px-4 py-3 text-sm ${n.read ? "" : "bg-red-50/60"}`}>
+                <li
+                  key={n.id}
+                  onClick={() => {
+                    if (n.link) {
+                      setOpen(false);
+                      navigate(n.link);
+                    }
+                  }}
+                  className={`px-4 py-3 text-sm ${n.read ? "" : "bg-red-50/60"} ${n.link ? "cursor-pointer hover:bg-red-50 transition-colors" : ""}`}
+                >
                   <p className="text-slate-800">{n.message}</p>
                   <p className="mt-1 text-xs text-slate-400">
                     {new Date(n.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}

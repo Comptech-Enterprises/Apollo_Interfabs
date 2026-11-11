@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { apiSkus } from "@/lib/api";
 import { PageHeader } from "@/components/ui";
 import { SkuForm, type SkuFormValues } from "@/components/SkuForm";
+import { CardSkeleton } from "@/components/TableSkeleton";
 
 export function EditSkuPage() {
   const { id } = useParams<{ id: string }>();
@@ -35,7 +36,7 @@ export function EditSkuPage() {
   }, [id]);
 
   if (loading) {
-    return <div className="card text-center py-12 text-slate-500">Loading SKU...</div>;
+    return <div className="mx-auto max-w-2xl"><CardSkeleton /></div>;
   }
 
   if (!initial) {

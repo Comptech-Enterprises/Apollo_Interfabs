@@ -6,11 +6,13 @@ import { apiStock, apiSkus } from "@/lib/api";
 import { formatDate, formatMetres, formatPrice } from "@/lib/format";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { Pagination, VoidedBadge, QualityBadge } from "@/components/bits";
+import { TableSkeleton } from "@/components/TableSkeleton";
 import { VoidButton } from "@/components/VoidButton";
 
 export function PurchasesPage() {
   const { user } = useAuth();
-  const canReview = user?.role === "OWNER" || user?.role === "MANAGER";
+  const isOwner = user?.role === "OWNER";
+  const canReview = isOwner || user?.role === "MANAGER";
 
   const [skus, setSkus] = useState<any[]>([]);
   const [filters, setFilters] = useState({ sku: "", supplier: "", quality: "", from: "", to: "" });
@@ -80,16 +82,17 @@ export function PurchasesPage() {
     <>
       <PageHeader
         title="Purchase log"
-       
         actions={
-          <Link to="/stock-in/new" className="btn-primary">
-            Record stock in
-          </Link>
+          !isOwner ? (
+            <Link to="/stock-in/new" className="btn-primary">
+              Record stock in
+            </Link>
+          ) : null
         }
       />
-      <form onSubmit={handleFilterSubmit} role="search" className="card mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      <form onSubmit={handleFilterSubmit} role="search" className="card mb-4 grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <div>
-          <label htmlFor="sku" className="mb-1 block text-sm font-medium">SKU / Fabric</label>
+          <label htmlFor="sku" className="mb-1 block text-sm font-medium text-slate-700">SKU / Fabric</label>
           <select
             id="sku"
             name="sku"
@@ -106,7 +109,7 @@ export function PurchasesPage() {
           </select>
         </div>
         <div>
-          <label htmlFor="supplier" className="mb-1 block text-sm font-medium">Supplier</label>
+          <label htmlFor="supplier" className="mb-1 block text-sm font-medium text-slate-700">Supplier</label>
           <input
             id="supplier"
             name="supplier"
@@ -118,7 +121,7 @@ export function PurchasesPage() {
           />
         </div>
         <div>
-          <label htmlFor="quality" className="mb-1 block text-sm font-medium">Quality status</label>
+          <label htmlFor="quality" className="mb-1 block text-sm font-medium text-slate-700">Quality status</label>
           <select
             id="quality"
             name="quality"
@@ -133,7 +136,7 @@ export function PurchasesPage() {
           </select>
         </div>
         <div>
-          <label htmlFor="from" className="mb-1 block text-sm font-medium">From</label>
+          <label htmlFor="from" className="mb-1 block text-sm font-medium text-slate-700">From</label>
           <input
             id="from"
             name="from"
@@ -144,7 +147,7 @@ export function PurchasesPage() {
           />
         </div>
         <div>
-          <label htmlFor="to" className="mb-1 block text-sm font-medium">To</label>
+          <label htmlFor="to" className="mb-1 block text-sm font-medium text-slate-700">To</label>
           <input
             id="to"
             name="to"
@@ -165,7 +168,7 @@ export function PurchasesPage() {
       </form>
 
       {loading && data.rows.length === 0 ? (
-        <div className="card text-center py-12 text-slate-500">Loading purchases...</div>
+        <TableSkeleton cols={7} />
       ) : data.rows.length === 0 ? (
         <EmptyState
           title={filtered ? "No purchases match your filters" : "No purchases recorded yet"}
@@ -173,7 +176,7 @@ export function PurchasesPage() {
         />
       ) : (
         <>
-          <div className="card hidden overflow-x-auto p-0 md:block sm:p-0">
+          <div className="hidden overflow-x-auto rounded-xl border border-red-100/90 bg-white/95 shadow-xs shadow-red-500/5 md:block">
             <table className="w-full min-w-[820px]">
               <thead className="border-b border-red-100 bg-red-50/50">
                 <tr>
@@ -210,7 +213,7 @@ export function PurchasesPage() {
                           <select
                             value={status}
                             onChange={(e) => handleQualityChange(r.id, e.target.value as any)}
-                            className={`rounded-lg border px-2 py-1 text-xs font-semibold cursor-pointer focus:outline-none transition-colors ${
+                            className={`select-badge rounded-lg border pl-2.5 py-1 text-xs font-semibold cursor-pointer focus:outline-none transition-colors ${
                               status === "APPROVED"
                                 ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100/80"
                                 : status === "REJECTED"
@@ -271,7 +274,7 @@ export function PurchasesPage() {
                       <select
                         value={status}
                         onChange={(e) => handleQualityChange(r.id, e.target.value as any)}
-                        className={`rounded-lg border px-2 py-0.5 text-xs font-semibold cursor-pointer focus:outline-none ${
+                        className={`select-badge rounded-lg border pl-2.5 py-1 text-xs font-semibold cursor-pointer focus:outline-none ${
                           status === "APPROVED"
                             ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                             : status === "REJECTED"

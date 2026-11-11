@@ -6,6 +6,7 @@ import { apiUsers } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { PageHeader, Field, SubmitButton } from "@/components/ui";
 import { ActiveBadge } from "@/components/bits";
+import { TableSkeleton } from "@/components/TableSkeleton";
 import { PasswordInput } from "@/components/PasswordInput";
 import { ToggleActiveButton } from "@/components/ToggleActiveButton";
 
@@ -106,7 +107,7 @@ export function UsersPage() {
         {/* Users list */}
         <div>
           {loading && users.length === 0 ? (
-            <div className="card text-center py-12 text-slate-500">Loading users...</div>
+            <TableSkeleton cols={5} rows={4} />
           ) : (
             <ul className="space-y-3">
               {users.map((u) => (

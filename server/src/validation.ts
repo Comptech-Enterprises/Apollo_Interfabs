@@ -69,22 +69,17 @@ export const saleSchema = z.object({
   buyerName: text("Company name"),
 });
 
-export const purchaseOrderSchema = z
-  .object({
-    billFrom: optionalText(100),
-    companyName: optionalText(100),
-    supplierName: optionalText(100),
-    poDate: dateString.optional(),
-    itemName: text("Item name"),
-    quantity: money("Quantity"),
-    description: optionalText(300),
-    skuId: optionalText(100),
-    skuCode: optionalText(50),
-  })
-  .refine((data) => Boolean(data.billFrom || data.companyName), {
-    message: "Enter Bill from entity or company name",
-    path: ["billFrom"],
-  });
+export const purchaseOrderSchema = z.object({
+  itemName: text("Item name"),
+  quantity: money("Quantity"),
+  customerName: text("Customer name"),
+  description: optionalText(300),
+});
+
+export const poReviewSchema = z.object({
+  status: z.enum(["APPROVED", "REJECTED"]),
+  note: optionalText(300),
+});
 
 export const voidSchema = z.object({
   id: text("Entry"),

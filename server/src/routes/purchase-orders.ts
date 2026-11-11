@@ -1,18 +1,32 @@
 import { Router } from "express";
-import { PurchaseOrder, User, Notification, withTransaction } from "../db.js";
+import { PurchaseOrder, User, Notification } from "../db.js";
 import { requireAuth, requireRole, type AuthenticatedRequest } from "../middleware/auth.js";
-import { purchaseOrderSchema, zodMessage } from "../validation.js";
+import { purchaseOrderSchema, poReviewSchema, zodMessage } from "../validation.js";
 
 const router = Router();
 router.use(requireAuth);
 
-router.get("/", requireRole("OWNER"), async (req, res) => {
+router.get("/", async (req, res) => {
+  const me = (req as unknown as AuthenticatedRequest).user;
   const page = Math.max(1, Number(req.query.page) || 1);
+  const status = req.query.status as string | undefined;
   const PAGE = 25;
 
+  const filter: Record<string, any> = {};
+
+  if (me.role === "SALES") {
+    filter.createdById = me.uid;
+  } else if (me.role === "MANAGER") {
+    filter.status = "APPROVED";
+  }
+
+  if (status && ["PENDING", "APPROVED", "REJECTED"].includes(status)) {
+    filter.status = status;
+  }
+
   const [rows, count, users] = await Promise.all([
-    PurchaseOrder.find().sort({ createdAt: -1 }).skip((page - 1) * PAGE).limit(PAGE),
-    PurchaseOrder.countDocuments(),
+    PurchaseOrder.find(filter).sort({ createdAt: -1 }).skip((page - 1) * PAGE).limit(PAGE),
+    PurchaseOrder.countDocuments(filter),
     User.find().select("_id name"),
   ]);
 
@@ -21,6 +35,7 @@ router.get("/", requireRole("OWNER"), async (req, res) => {
     rows: rows.map((r) => ({
       ...r.toJSON(),
       createdByName: userMap.get(String(r.createdById)) ?? "Unknown",
+      reviewedByName: r.reviewedById ? (userMap.get(String(r.reviewedById)) ?? "Unknown") : null,
     })),
     count,
     page,
@@ -28,7 +43,7 @@ router.get("/", requireRole("OWNER"), async (req, res) => {
   });
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireRole("SALES"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const p = purchaseOrderSchema.safeParse(req.body);
   if (!p.success) {
@@ -36,44 +51,74 @@ router.post("/", async (req, res) => {
     return;
   }
 
-  const billFrom = p.data.billFrom || p.data.companyName || "Apollo Interfabs";
-  const supplierName = p.data.supplierName || null;
-  const poDate = p.data.poDate ? new Date(`${p.data.poDate}T00:00:00.000Z`) : new Date();
-
-  await withTransaction(async (session) => {
-    await PurchaseOrder.create(
-      [
-        {
-          companyName: billFrom,
-          billFrom,
-          supplierName,
-          poDate,
-          quantity: p.data.quantity,
-          description: p.data.description,
-          skuId: p.data.skuId || undefined,
-          skuCode: p.data.skuCode || undefined,
-          itemName: p.data.itemName,
-          createdById: me.uid,
-        },
-      ],
-      { session }
-    );
-
-    const owners = await User.find({ role: "OWNER", active: true }).select("_id").session(session || null);
-    if (owners.length > 0) {
-      const suppInfo = supplierName ? ` | Supplier: ${supplierName}` : "";
-      await Notification.insertMany(
-        owners.map((o) => ({
-          userId: o._id,
-          message: `New PO: ${p.data.itemName} — ${p.data.quantity}m (Bill from: ${billFrom}${suppInfo}) by ${me.name}`,
-          link: "/po",
-        })),
-        { session }
-      );
-    }
+  const po = await PurchaseOrder.create({
+    itemName: p.data.itemName,
+    quantity: p.data.quantity,
+    customerName: p.data.customerName,
+    description: p.data.description,
+    status: "PENDING",
+    createdById: me.uid,
   });
 
-  res.status(201).json({ ok: true, message: "PO submitted." });
+  const owners = await User.find({ role: "OWNER", active: true }).select("_id");
+  if (owners.length > 0) {
+    await Notification.insertMany(
+      owners.map((o) => ({
+        userId: o._id,
+        message: `New PO request: ${p.data.itemName} — ${p.data.quantity}m for ${p.data.customerName} by ${me.name}`,
+        link: "/po",
+      }))
+    );
+  }
+
+  res.status(201).json({ ok: true, message: "PO submitted for approval." });
+});
+
+router.patch("/:id/review", requireRole("OWNER"), async (req, res) => {
+  const me = (req as unknown as AuthenticatedRequest).user;
+  const p = poReviewSchema.safeParse(req.body);
+  if (!p.success) {
+    res.status(400).json({ ok: false, ...zodMessage(p.error) });
+    return;
+  }
+
+  const po = await PurchaseOrder.findById(req.params.id);
+  if (!po) {
+    res.status(404).json({ ok: false, message: "PO not found." });
+    return;
+  }
+  if (po.status !== "PENDING") {
+    res.status(400).json({ ok: false, message: `PO already ${po.status.toLowerCase()}.` });
+    return;
+  }
+
+  po.status = p.data.status;
+  po.reviewedById = me.uid as any;
+  po.reviewedAt = new Date();
+  po.reviewNote = p.data.note || null;
+  await po.save();
+
+  const creatorNotif = {
+    userId: po.createdById,
+    message: `Your PO for ${po.itemName} (${po.quantity}m) has been ${p.data.status.toLowerCase()} by ${me.name}${p.data.note ? `: ${p.data.note}` : ""}`,
+    link: "/po",
+  };
+  await Notification.create(creatorNotif);
+
+  if (p.data.status === "APPROVED") {
+    const managers = await User.find({ role: "MANAGER", active: true }).select("_id");
+    if (managers.length > 0) {
+      await Notification.insertMany(
+        managers.map((m) => ({
+          userId: m._id,
+          message: `PO approved: ${po.itemName} — ${po.quantity}m for ${po.customerName}. Please procure.`,
+          link: "/po",
+        }))
+      );
+    }
+  }
+
+  res.json({ ok: true, message: `PO ${p.data.status.toLowerCase()}.` });
 });
 
 export default router;

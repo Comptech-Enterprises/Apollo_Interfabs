@@ -18,7 +18,7 @@ function formatMetres(v: unknown): string {
   return `${Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`;
 }
 
-router.post("/stock-in", requireRole("OWNER", "MANAGER"), async (req, res) => {
+router.post("/stock-in", requireRole("MANAGER"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const p = stockInSchema.safeParse(req.body);
   if (!p.success) {
@@ -31,46 +31,37 @@ router.post("/stock-in", requireRole("OWNER", "MANAGER"), async (req, res) => {
     const result = await withTransaction(async (session) => {
       const itemNameNorm = d.itemName.trim();
       const colourNorm = (d.colour || "Natural").trim();
-      let isNewSku = false;
 
-      let sku = await Sku.findOne({
-        fabricName: new RegExp(`^${escapeRegex(itemNameNorm)}$`, "i"),
-        colour: new RegExp(`^${escapeRegex(colourNorm)}$`, "i"),
-      }).session(session || null);
-
-      if (!sku) {
-        const code = itemNameNorm
-          .toUpperCase()
-          .replace(/[^A-Z0-9]+/g, "-")
-          .replace(/(^-|-$)/g, "")
-          + "-"
-          + colourNorm.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-        let uniqueCode = code;
-        let suffix = 2;
-        while (await Sku.findOne({ code: uniqueCode }).session(session || null)) {
-          uniqueCode = `${code}-${suffix++}`;
-        }
-
-        const created = await Sku.create(
-          [
-            {
-              code: uniqueCode,
-              fabricName: itemNameNorm,
-              fabricType: itemNameNorm,
-              colour: colourNorm,
-              warehouse: "Warehouse 1",
-              sellingPricePerMetre: 0,
-              lowStockThreshold: 0,
-              currentStock: 0,
-              active: true,
-              createdById: me.uid,
-            },
-          ],
-          { session }
-        );
-        sku = created[0];
-        isNewSku = true;
+      const code = itemNameNorm
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "")
+        + "-"
+        + colourNorm.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      let uniqueCode = code;
+      let suffix = 2;
+      while (await Sku.findOne({ code: uniqueCode }).session(session || null)) {
+        uniqueCode = `${code}-${suffix++}`;
       }
+
+      const created = await Sku.create(
+        [
+          {
+            code: uniqueCode,
+            fabricName: itemNameNorm,
+            fabricType: itemNameNorm,
+            colour: colourNorm,
+            warehouse: "Warehouse 1",
+            sellingPricePerMetre: 0,
+            lowStockThreshold: 0,
+            currentStock: 0,
+            active: true,
+            createdById: me.uid,
+          },
+        ],
+        { session }
+      );
+      const sku = created[0];
 
       await StockIn.create(
         [
@@ -93,20 +84,18 @@ router.post("/stock-in", requireRole("OWNER", "MANAGER"), async (req, res) => {
         { returnDocument: "after", session: session || null }
       );
 
-      return { sku: updated!, isNewSku };
+      return { sku: updated! };
     });
 
-    if (result.isNewSku) {
-      const owners = await User.find({ role: "OWNER", active: true }).select("_id");
-      if (owners.length > 0) {
-        await Notification.insertMany(
-          owners.map((o) => ({
-            userId: o._id,
-            message: `New SKU "${result.sku.code}" auto-created from purchase. Please set selling price.`,
-            link: `/skus/${result.sku._id}`,
-          }))
-        );
-      }
+    const owners = await User.find({ role: "OWNER", active: true }).select("_id");
+    if (owners.length > 0) {
+      await Notification.insertMany(
+        owners.map((o) => ({
+          userId: o._id,
+          message: `New SKU "${result.sku.code}" created from purchase. Please set selling price.`,
+          link: `/skus/${result.sku._id}`,
+        }))
+      );
     }
 
     res.status(201).json({
@@ -323,11 +312,16 @@ router.post("/void-stockin", requireRole("OWNER", "MANAGER"), async (req, res) =
   }
 });
 
-router.get("/sales", requireRole("OWNER"), async (req, res) => {
+router.get("/sales", requireRole("OWNER", "SALES"), async (req, res) => {
+  const me = (req as unknown as AuthenticatedRequest).user;
   const { sku, buyer, from, to } = req.query;
   const page = Math.max(1, Number(req.query.page) || 1);
   const PAGE = 25;
   const filter: Record<string, any> = { voidedAt: null };
+
+  if (me.role === "SALES") {
+    filter.createdById = me.uid;
+  }
 
   if (sku && sku !== "all") filter.skuId = sku;
   if (buyer) filter.buyerName = new RegExp(escapeRegex(String(buyer)), "i");

@@ -53,13 +53,14 @@ async function main() {
 
   // POs
   const poData = [
-    { company: "ABC Textiles", qty: 100, desc: "Need cotton white urgently" },
-    { company: "Star Garments", qty: 50, desc: "Silk black for winter collection" },
-    { company: "Royal Exports", qty: 200, desc: null },
+    { itemName: "Cotton White Fabric", customer: "ABC Textiles", qty: 100, desc: "Need cotton white urgently" },
+    { itemName: "Silk Black Fabric", customer: "Star Garments", qty: 50, desc: "Silk black for winter collection" },
+    { itemName: "Polyester Navy Suiting", customer: "Royal Exports", qty: 200, desc: null },
   ];
   for (const p of poData) {
     await PurchaseOrder.create({
-      companyName: p.company,
+      itemName: p.itemName,
+      customerName: p.customer,
       quantity: p.qty,
       description: p.desc,
       createdById: sales._id,

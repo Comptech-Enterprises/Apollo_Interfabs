@@ -301,17 +301,18 @@ export const PriceChange: Model<IPriceChange> =
 // ==========================================
 // PurchaseOrder
 // ==========================================
+export type POStatus = "PENDING" | "APPROVED" | "REJECTED";
+
 export interface IPurchaseOrder {
   _id: Types.ObjectId;
-  companyName: string;
-  billFrom?: string | null;
-  supplierName?: string | null;
-  poDate?: Date | null;
+  itemName: string;
   quantity: number;
+  customerName: string;
   description?: string | null;
-  skuId?: Types.ObjectId | string | null;
-  skuCode?: string | null;
-  itemName?: string | null;
+  status: POStatus;
+  reviewedById?: Types.ObjectId | null;
+  reviewedAt?: Date | null;
+  reviewNote?: string | null;
   createdById: Types.ObjectId;
   createdAt: Date;
 }
@@ -320,22 +321,21 @@ export type PurchaseOrderDocument = Document<Types.ObjectId, {}, IPurchaseOrder>
 
 const purchaseOrderSchema = new Schema<IPurchaseOrder>(
   {
-    companyName: { type: String, required: true, trim: true },
-    billFrom: { type: String, default: null, trim: true },
-    supplierName: { type: String, default: null, trim: true },
-    poDate: { type: Date, default: Date.now },
+    itemName: { type: String, required: true, trim: true },
     quantity: { type: Number, required: true },
+    customerName: { type: String, required: true, trim: true },
     description: { type: String, default: null, trim: true },
-    skuId: { type: Schema.Types.ObjectId, ref: "Sku", default: null },
-    skuCode: { type: String, default: null, trim: true },
-    itemName: { type: String, default: null, trim: true },
+    status: { type: String, enum: ["PENDING", "APPROVED", "REJECTED"], default: "PENDING" },
+    reviewedById: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    reviewedAt: { type: Date, default: null },
+    reviewNote: { type: String, default: null, trim: true },
     createdById: { type: Schema.Types.ObjectId, ref: "User", required: true },
     createdAt: { type: Date, default: Date.now },
   },
   { ...defaultOptions, collection: "PurchaseOrder" }
 );
 
-purchaseOrderSchema.index({ createdById: 1, createdAt: 1 });
+purchaseOrderSchema.index({ status: 1, createdAt: -1 });
 
 export const PurchaseOrder: Model<IPurchaseOrder> =
   mongoose.models.PurchaseOrder || mongoose.model<IPurchaseOrder>("PurchaseOrder", purchaseOrderSchema, "PurchaseOrder");
