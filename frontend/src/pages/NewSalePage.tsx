@@ -83,7 +83,7 @@ export function NewSalePage() {
 
   return (
     <>
-      <PageHeader title="Record sale" subtitle="Record a fabric sale with automatic price filling and stock deduction." />
+      <PageHeader title="Record sale" />
       <div className="mx-auto max-w-xl">
         {skus.length === 0 ? (
           <div className="card text-center py-10">

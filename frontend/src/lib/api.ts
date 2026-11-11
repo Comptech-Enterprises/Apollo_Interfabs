@@ -42,6 +42,14 @@ export async function apiFetch<T = any>(
 
   const data = await res.json().catch(() => ({}));
 
+  if (res.status === 401 && authToken) {
+    setStoredToken(null);
+    setStoredUser(null);
+    alert("You are logged out. Please log in again.");
+    window.location.href = "/";
+    throw new Error("Session expired");
+  }
+
   if (!res.ok) {
     const error: any = new Error(data.message || "An error occurred");
     error.status = res.status;

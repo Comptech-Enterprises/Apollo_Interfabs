@@ -55,7 +55,7 @@ export function NewPOPage() {
 
   return (
     <>
-      <PageHeader title="New Purchase Order" subtitle="Submit a client request for fabric procurement." />
+      <PageHeader title="New Purchase Order" />
       <div className="mx-auto max-w-xl">
         <form onSubmit={handleSubmit} className="card space-y-4" noValidate>
           <div className="grid gap-4 sm:grid-cols-2">

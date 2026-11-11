@@ -101,7 +101,7 @@ export function UsersPage() {
 
   return (
     <>
-      <PageHeader title="Users" subtitle="Manage manager and sales staff accounts." />
+      <PageHeader title="Users" />
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
         {/* Users list */}
         <div>

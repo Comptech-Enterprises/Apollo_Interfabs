@@ -47,7 +47,6 @@ export function SkuDetailPage() {
     <>
       <PageHeader
         title={sku.code}
-        subtitle={`${sku.fabricName} - ${sku.fabricType} - ${sku.colour}${sku.pattern ? ` - ${sku.pattern}` : ""}`}
         actions={
           <>
             <Link to={`/stock-in/new?sku=${sku.id}`} className="btn-primary">

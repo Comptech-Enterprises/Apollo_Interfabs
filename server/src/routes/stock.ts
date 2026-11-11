@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Sku, StockIn, Sale, AuditLog, withTransaction } from "../db.js";
+import { Sku, StockIn, Sale, AuditLog, Notification, User, withTransaction } from "../db.js";
 import { requireAuth, requireRole, type AuthenticatedRequest } from "../middleware/auth.js";
 import { stockInSchema, saleSchema, voidSchema, updateQualitySchema, zodMessage } from "../validation.js";
 
@@ -28,14 +28,54 @@ router.post("/stock-in", requireRole("OWNER", "MANAGER"), async (req, res) => {
   const d = p.data;
 
   try {
-    const sku = await withTransaction(async (session) => {
-      const s = await Sku.findById(d.skuId).session(session || null);
-      if (!s) throw new Error("SKU not found.");
+    const result = await withTransaction(async (session) => {
+      const itemNameNorm = d.itemName.trim();
+      const colourNorm = (d.colour || "Natural").trim();
+      let isNewSku = false;
+
+      let sku = await Sku.findOne({
+        fabricName: new RegExp(`^${escapeRegex(itemNameNorm)}$`, "i"),
+        colour: new RegExp(`^${escapeRegex(colourNorm)}$`, "i"),
+      }).session(session || null);
+
+      if (!sku) {
+        const code = itemNameNorm
+          .toUpperCase()
+          .replace(/[^A-Z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "")
+          + "-"
+          + colourNorm.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        let uniqueCode = code;
+        let suffix = 2;
+        while (await Sku.findOne({ code: uniqueCode }).session(session || null)) {
+          uniqueCode = `${code}-${suffix++}`;
+        }
+
+        const created = await Sku.create(
+          [
+            {
+              code: uniqueCode,
+              fabricName: itemNameNorm,
+              fabricType: itemNameNorm,
+              colour: colourNorm,
+              warehouse: "Warehouse 1",
+              sellingPricePerMetre: 0,
+              lowStockThreshold: 0,
+              currentStock: 0,
+              active: true,
+              createdById: me.uid,
+            },
+          ],
+          { session }
+        );
+        sku = created[0];
+        isNewSku = true;
+      }
 
       await StockIn.create(
         [
           {
-            skuId: s._id,
+            skuId: sku._id,
             supplierName: d.supplierName,
             quantityMetres: d.quantityMetres,
             purchaseDate: toDateOnly(d.purchaseDate),
@@ -48,16 +88,30 @@ router.post("/stock-in", requireRole("OWNER", "MANAGER"), async (req, res) => {
       );
 
       const updated = await Sku.findByIdAndUpdate(
-        d.skuId,
+        sku._id,
         { $inc: { currentStock: d.quantityMetres } },
         { returnDocument: "after", session: session || null }
       );
-      return updated!;
+
+      return { sku: updated!, isNewSku };
     });
+
+    if (result.isNewSku) {
+      const owners = await User.find({ role: "OWNER", active: true }).select("_id");
+      if (owners.length > 0) {
+        await Notification.insertMany(
+          owners.map((o) => ({
+            userId: o._id,
+            message: `New SKU "${result.sku.code}" auto-created from purchase. Please set selling price.`,
+            link: `/skus/${result.sku._id}`,
+          }))
+        );
+      }
+    }
 
     res.status(201).json({
       ok: true,
-      message: `Stock recorded. ${sku.code} now has ${formatMetres(sku.currentStock)}.`,
+      message: `Stock recorded. ${result.sku.code} now has ${formatMetres(result.sku.currentStock)}.`,
     });
   } catch (e) {
     if (e instanceof Error) {
@@ -82,6 +136,7 @@ router.post("/sale", async (req, res) => {
       const sku = await Sku.findById(d.skuId).session(session || null);
       if (!sku) throw new Error("SKU not found.");
       if (!sku.active) throw new Error("This SKU is inactive and cannot be sold.");
+      if (!sku.sellingPricePerMetre || sku.sellingPricePerMetre <= 0) throw new Error("Selling price not set for this SKU. Ask an owner to set the price first.");
 
       const upd = await Sku.findOneAndUpdate(
         { _id: d.skuId, active: true, currentStock: { $gte: d.quantityMetres } },

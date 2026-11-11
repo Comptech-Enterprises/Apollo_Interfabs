@@ -203,11 +203,6 @@ export function DashboardPage() {
       <div className="mx-auto max-w-3xl">
         <div className="mb-4 flex items-end justify-between">
           <h1 className="text-2xl font-bold text-slate-900">Inventory</h1>
-          {canManageStock && (
-            <Link to="/skus/new" className="btn-primary">
-              Add SKU
-            </Link>
-          )}
         </div>
         <div className="flex gap-2">
           <Link to="/sales/new" className="btn-primary flex-1 text-center">

@@ -44,11 +44,12 @@ export const skuSchema = z.object({
 });
 
 export const stockInSchema = z.object({
-  skuId: text("SKU"),
+  itemName: text("Item name"),
   supplierName: text("Supplier name"),
   quantityMetres: money("Quantity"),
   purchaseDate: dateString,
   costPricePerMetre: money("Cost price"),
+  colour: optionalText(50),
   qualityStatus: z.enum(["APPROVED", "REJECTED", "PENDING"]).optional().default("APPROVED"),
   qualityNotes: optionalText(300),
 });

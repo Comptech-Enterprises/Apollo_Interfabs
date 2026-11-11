@@ -44,7 +44,7 @@ export function EditSkuPage() {
 
   return (
     <>
-      <PageHeader title={`Edit ${initial.code}`} subtitle="Update SKU details and thresholds." />
+      <PageHeader title={`Edit ${initial.code}`} />
       <div className="mx-auto max-w-2xl">
         <SkuForm mode="edit" initial={initial} allowedWarehouses={user?.warehouses} role={user?.role} />
       </div>

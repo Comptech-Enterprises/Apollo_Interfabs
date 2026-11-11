@@ -34,11 +34,7 @@ export function SkusPage() {
     <>
       <PageHeader
         title="SKUs"
-        actions={
-          <Link to="/skus/new" className="btn-primary">
-            Add SKU
-          </Link>
-        }
+        actions={null}
       />
       <form onSubmit={handleSearch} role="search" className="mb-4 flex gap-2">
         <label htmlFor="q" className="sr-only">
@@ -74,14 +70,8 @@ export function SkusPage() {
       ) : skus.length === 0 ? (
         <EmptyState
           title={q ? "No SKUs match your search" : "No SKUs yet"}
-          body={q ? undefined : "Add your first SKU to get started."}
-        >
-          {!q && (
-            <Link to="/skus/new" className="btn-primary">
-              Add SKU
-            </Link>
-          )}
-        </EmptyState>
+          body={q ? undefined : "SKUs are auto-created when you record a purchase."}
+        />
       ) : (
         <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {skus.map((s) => (

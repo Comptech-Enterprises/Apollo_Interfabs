@@ -45,7 +45,7 @@ export function AccountPage() {
 
   return (
     <>
-      <PageHeader title="Account" subtitle="Manage your security settings." />
+      <PageHeader title="Account" />
       {user?.mustChangePassword && (
         <p
           role="status"

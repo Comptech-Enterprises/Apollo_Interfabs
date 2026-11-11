@@ -80,7 +80,7 @@ export function PurchasesPage() {
     <>
       <PageHeader
         title="Purchase log"
-        subtitle="Track fabric arrivals and review quality assurance status."
+       
         actions={
           <Link to="/stock-in/new" className="btn-primary">
             Record stock in
