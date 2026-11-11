@@ -43,6 +43,8 @@ export function stockColor(qty: number): {
   badge: string;
   code: string;
   sub: string;
+  dot: string;
+  accent: string;
 } {
   if (qty < 25) {
     return {
@@ -50,6 +52,8 @@ export function stockColor(qty: number): {
       badge: "bg-red-100 text-red-700",
       code: "text-red-700",
       sub: "text-red-900",
+      dot: "bg-red-500",
+      accent: "border-l-red-500",
     };
   }
   if (qty < 100) {
@@ -58,6 +62,8 @@ export function stockColor(qty: number): {
       badge: "bg-orange-100 text-orange-800",
       code: "text-blue-900",
       sub: "text-orange-950",
+      dot: "bg-amber-500",
+      accent: "border-l-amber-500",
     };
   }
   if (qty <= 400) {
@@ -66,6 +72,8 @@ export function stockColor(qty: number): {
       badge: "bg-blue-100 text-blue-700",
       code: "text-blue-700",
       sub: "text-blue-950",
+      dot: "bg-blue-500",
+      accent: "border-l-blue-500",
     };
   }
   return {
@@ -73,5 +81,7 @@ export function stockColor(qty: number): {
     badge: "bg-purple-100 text-purple-700",
     code: "text-purple-700",
     sub: "text-purple-950",
+    dot: "bg-purple-500",
+    accent: "border-l-purple-500",
   };
 }

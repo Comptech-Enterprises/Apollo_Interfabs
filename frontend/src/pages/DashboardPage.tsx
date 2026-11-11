@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { apiSkus } from "@/lib/api";
 import { formatMetres, formatPrice, isLowStock, stockColor } from "@/lib/format";
 import { ActiveBadge, LowStockBadge, OutBadge } from "@/components/bits";
+import { TableSkeleton } from "@/components/TableSkeleton";
 
 type Sku = {
   id: string;
@@ -21,6 +22,9 @@ type Sku = {
 };
 
 type Facets = { types: string[]; colours: string[]; patterns: string[] };
+type SortKey = "code-asc" | "code-desc" | "stock-asc" | "stock-desc" | "name-asc" | "price-asc" | "price-desc";
+type StockTab = "all" | "in" | "low" | "out";
+type ViewMode = "table" | "grid";
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -47,7 +51,15 @@ export function DashboardPage() {
   const [searching, setSearching] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
 
+  // Listing display state
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [sortBy, setSortBy] = useState<SortKey>("code-asc");
+  const [stockTab, setStockTab] = useState<StockTab>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(24);
+
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const listTopRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const skipNextSearchRef = useRef(false);
 
@@ -56,7 +68,7 @@ export function DashboardPage() {
   }, []);
 
   const doSearch = useCallback(
-    async (q: string, f: typeof filters) => {
+    async (q: string, f: typeof filters, forceShow = false) => {
       setSearching(true);
       try {
         const data = await apiSkus.list(q.trim());
@@ -72,7 +84,8 @@ export function DashboardPage() {
         });
 
         setSuggestions(filtered);
-        if (q.trim().length > 0 || f.type || f.colour || f.pattern || f.status || f.low) {
+        setPage(1);
+        if (forceShow || q.trim().length > 0 || f.type || f.colour || f.pattern || f.status || f.low) {
           setResults(filtered);
           setHasSearched(true);
         } else {
@@ -98,11 +111,12 @@ export function DashboardPage() {
       if (query.trim().length > 0) {
         doSearch(query, filters);
         setShowSuggestions(true);
-      } else if (!filters.type && !filters.colour && !filters.pattern && !filters.status && !filters.low) {
+      } else if (filters.type || filters.colour || filters.pattern || filters.status || filters.low) {
+        doSearch("", filters);
+        setShowSuggestions(false);
+      } else {
         setSuggestions([]);
         setShowSuggestions(false);
-        setResults([]);
-        setHasSearched(false);
       }
     }, 250);
     return () => clearTimeout(timer);
@@ -125,21 +139,27 @@ export function DashboardPage() {
     setQuery(s.code);
   };
 
+  const openSkuPreview = (s: Sku) => {
+    setSelected(s);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!showSuggestions || suggestions.length === 0) return;
-    if (e.key === "ArrowDown") {
+    if (e.key === "ArrowDown" && showSuggestions && suggestions.length > 0) {
       e.preventDefault();
       setHighlightIndex((i) => Math.min(i + 1, suggestions.length - 1));
-    } else if (e.key === "ArrowUp") {
+    } else if (e.key === "ArrowUp" && showSuggestions && suggestions.length > 0) {
       e.preventDefault();
       setHighlightIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (highlightIndex >= 0 && suggestions[highlightIndex]) {
+      if (showSuggestions && highlightIndex >= 0 && suggestions[highlightIndex]) {
         handleSelect(suggestions[highlightIndex]);
       } else {
-        doSearch(query, filters);
         setShowSuggestions(false);
+        setShowFilters(false);
+        setSelected(null);
+        doSearch(query, filters, true);
       }
     } else if (e.key === "Escape") {
       setShowSuggestions(false);
@@ -147,25 +167,97 @@ export function DashboardPage() {
   };
 
   const applyFilters = () => {
-    doSearch(query, filters);
     setShowSuggestions(false);
+    setShowFilters(false);
     setSelected(null);
+    setStockTab("all");
+    doSearch(query, filters, true);
+  };
+
+  const browseAll = () => {
+    setShowSuggestions(false);
+    setShowFilters(false);
+    setSelected(null);
+    setStockTab("all");
+    doSearch(query, filters, true);
   };
 
   const clearAll = () => {
     setQuery("");
     setFilters({ type: "", colour: "", pattern: "", status: "", low: false });
+    setStockTab("all");
     setResults([]);
     setHasSearched(false);
     setSelected(null);
     setSuggestions([]);
     setShowSuggestions(false);
+    setPage(1);
     inputRef.current?.focus();
   };
 
   const activeFilters = Boolean(
     filters.type || filters.colour || filters.pattern || filters.status || filters.low
   );
+
+  // Stock breakdown counts across current search results
+  const stockCounts = useMemo(() => {
+    let out = 0;
+    let low = 0;
+    let healthy = 0;
+    for (const s of results) {
+      const qty = Number(s.currentStock);
+      if (qty <= 0) out++;
+      else if (isLowStock(qty, s.lowStockThreshold)) low++;
+      else healthy++;
+    }
+    return { all: results.length, in: healthy, low, out };
+  }, [results]);
+
+  // Filter by selected stock tab
+  const filteredByStock = useMemo(() => {
+    if (stockTab === "all") return results;
+    return results.filter((s) => {
+      const qty = Number(s.currentStock);
+      if (stockTab === "out") return qty <= 0;
+      if (stockTab === "low") return qty > 0 && isLowStock(qty, s.lowStockThreshold);
+      return qty > 0 && !isLowStock(qty, s.lowStockThreshold);
+    });
+  }, [results, stockTab]);
+
+  // Sort results
+  const sortedResults = useMemo(() => {
+    const copy = [...filteredByStock];
+    copy.sort((a, b) => {
+      switch (sortBy) {
+        case "code-desc":
+          return b.code.localeCompare(a.code);
+        case "stock-asc":
+          return Number(a.currentStock) - Number(b.currentStock);
+        case "stock-desc":
+          return Number(b.currentStock) - Number(a.currentStock);
+        case "name-asc":
+          return a.fabricName.localeCompare(b.fabricName);
+        case "price-asc":
+          return Number(a.sellingPricePerMetre ?? 0) - Number(b.sellingPricePerMetre ?? 0);
+        case "price-desc":
+          return Number(b.sellingPricePerMetre ?? 0) - Number(a.sellingPricePerMetre ?? 0);
+        case "code-asc":
+        default:
+          return a.code.localeCompare(b.code);
+      }
+    });
+    return copy;
+  }, [filteredByStock, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedResults.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const startIdx = (safePage - 1) * pageSize;
+  const pagedResults = sortedResults.slice(startIdx, startIdx + pageSize);
+
+  const changePage = (nextPage: number) => {
+    setPage(nextPage);
+    listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <div className="space-y-6">
@@ -175,7 +267,7 @@ export function DashboardPage() {
           <h1 className="text-2xl font-bold text-slate-900">Inventory</h1>
         </div>
         {!isOwner && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Link to="/sales/new" className="btn-primary flex-1 text-center">
               Record Sale
             </Link>
@@ -215,9 +307,14 @@ export function DashboardPage() {
             type="text"
             value={query}
             onChange={(e) => {
-              setQuery(e.target.value);
+              const val = e.target.value;
+              setQuery(val);
               setSelected(null);
               setHighlightIndex(-1);
+              if (!val.trim() && !activeFilters) {
+                setHasSearched(false);
+                setResults([]);
+              }
             }}
             onFocus={() => {
               if (query.trim() && suggestions.length > 0) setShowSuggestions(true);
@@ -237,7 +334,7 @@ export function DashboardPage() {
               </svg>
             )}
 
-            {query && (
+            {(query || hasSearched) && (
               <button
                 type="button"
                 onClick={clearAll}
@@ -254,7 +351,10 @@ export function DashboardPage() {
 
             <button
               type="button"
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={() => {
+                setShowSuggestions(false);
+                setShowFilters((v) => !v);
+              }}
               className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium transition-all cursor-pointer ${
                 showFilters || activeFilters
                   ? "bg-brand-600 text-white shadow-sm"
@@ -277,6 +377,19 @@ export function DashboardPage() {
             </button>
           </div>
         </div>
+
+        {/* Browse all shortcut when idle */}
+        {!hasSearched && !selected && !showFilters && (
+          <div className="mt-2.5 flex justify-end px-2 text-xs">
+            <button
+              type="button"
+              onClick={browseAll}
+              className="font-semibold text-brand-700 hover:text-brand-800 hover:underline cursor-pointer"
+            >
+              Browse all stock →
+            </button>
+          </div>
+        )}
 
         {/* Suggestions dropdown */}
         {showSuggestions && query.trim().length > 0 && (suggestions.length > 0 || !searching) && (
@@ -437,7 +550,18 @@ export function DashboardPage() {
         <div className="card mx-auto max-w-3xl border-red-200 bg-gradient-to-br from-red-50/70 to-white">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <span className="font-mono text-xl font-bold text-red-700">{selected.code}</span>
+              {hasSearched && results.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelected(null)}
+                  className="mb-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800 hover:underline cursor-pointer"
+                >
+                  ← Back to list ({results.length})
+                </button>
+              )}
+              <div>
+                <span className="font-mono text-xl font-bold text-red-700">{selected.code}</span>
+              </div>
               <h2 className="mt-0.5 text-lg font-bold text-slate-900">{selected.fabricName}</h2>
               <p className="text-sm text-slate-600">
                 {selected.fabricType} · {selected.colour}
@@ -451,6 +575,7 @@ export function DashboardPage() {
               type="button"
               onClick={() => setSelected(null)}
               className="rounded-lg p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 cursor-pointer"
+              aria-label="Close details"
             >
               ✕
             </button>
@@ -468,7 +593,7 @@ export function DashboardPage() {
                   {Number(selected.sellingPricePerMetre) > 0 ? (
                     formatPrice(selected.sellingPricePerMetre)
                   ) : (
-                    <span className="text-red-600 text-sm">Not set</span>
+                    <span className="text-slate-400 italic text-sm font-medium">Not set</span>
                   )}
                 </p>
               </div>
@@ -505,59 +630,393 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Search results: Only visible when suggestions dropdown is not active */}
+      {/* Loading skeleton when fetching list without prior results */}
+      {!selected && !showSuggestions && searching && results.length === 0 && (
+        <div className="space-y-3">
+          <TableSkeleton cols={isOwner || isSales ? 7 : 6} rows={6} />
+        </div>
+      )}
+
+      {/* Full Inventory Listing UI */}
       {!selected && !showSuggestions && hasSearched && results.length > 0 && (
-        <div className="mx-auto max-w-3xl space-y-3">
-          <p className="text-center text-sm text-slate-400">
-            {results.length} result{results.length > 1 ? "s" : ""}
-          </p>
+        <div ref={listTopRef} className="animate-page-enter space-y-3">
+          {/* Toolbar */}
+          <div className="flex flex-col gap-3 rounded-xl border border-red-100/90 bg-white/95 px-4 py-3 shadow-xs shadow-red-500/5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-baseline gap-2 pr-2">
+                <span className="text-sm font-bold text-slate-900">
+                  {sortedResults.length} SKU{sortedResults.length === 1 ? "" : "s"}
+                </span>
+                {sortedResults.length > 0 && (
+                  <span className="text-xs text-slate-500">
+                    Showing {startIdx + 1}–{Math.min(startIdx + pageSize, sortedResults.length)}
+                  </span>
+                )}
+              </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            {results.map((s) => {
-              const sc = stockColor(Number(s.currentStock));
-              const hasPrice = s.sellingPricePerMetre !== undefined && Number(s.sellingPricePerMetre) > 0;
-              return (
-                <div
-                  key={s.id}
-                  onClick={() => setSelected(s)}
-                  className={`w-full rounded-2xl border p-4.5 ${sc.card} text-left transition-all duration-200 hover:brightness-95 hover:shadow-md hover:-translate-y-0.5 cursor-pointer`}
+              {/* Quick stock tier tabs */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStockTab("all");
+                    setPage(1);
+                  }}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer ${
+                    stockTab === "all"
+                      ? "bg-red-600 text-white shadow-xs"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className={`font-mono text-sm font-bold ${sc.code}`}>{s.code}</span>
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${sc.badge}`}>
-                      {formatMetres(s.currentStock)}
-                    </span>
-                  </div>
+                  All ({stockCounts.all})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStockTab("in");
+                    setPage(1);
+                  }}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer ${
+                    stockTab === "in"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  In Stock ({stockCounts.in})
+                </button>
+                {stockCounts.low > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStockTab("low");
+                      setPage(1);
+                    }}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer ${
+                      stockTab === "low"
+                        ? "bg-amber-600 text-white shadow-xs"
+                        : "bg-amber-50 text-amber-800 hover:bg-amber-100"
+                    }`}
+                  >
+                    Low ({stockCounts.low})
+                  </button>
+                )}
+                {stockCounts.out > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStockTab("out");
+                      setPage(1);
+                    }}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer ${
+                      stockTab === "out"
+                        ? "bg-red-700 text-white shadow-xs"
+                        : "bg-red-50 text-red-700 hover:bg-red-100"
+                    }`}
+                  >
+                    Out ({stockCounts.out})
+                  </button>
+                )}
+              </div>
+            </div>
 
-                  <h3 className="mt-1 font-bold text-slate-900 text-base">{s.fabricName}</h3>
+            {/* Right controls: Sort, Page size, View toggle */}
+            <div className="flex flex-wrap items-center gap-2">
+              <label htmlFor="sortBy" className="sr-only">
+                Sort inventory
+              </label>
+              <select
+                id="sortBy"
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value as SortKey);
+                  setPage(1);
+                }}
+                className="select-badge h-9 rounded-lg border border-slate-200 bg-white pl-3 text-xs font-semibold text-slate-700 hover:border-slate-300 focus:border-red-500 focus:outline-none cursor-pointer"
+              >
+                <option value="code-asc">Code: A → Z</option>
+                <option value="code-desc">Code: Z → A</option>
+                <option value="name-asc">Fabric: A → Z</option>
+                <option value="stock-asc">Stock: Low → High</option>
+                <option value="stock-desc">Stock: High → Low</option>
+                {(isOwner || isSales) && <option value="price-asc">Price: Low → High</option>}
+                {(isOwner || isSales) && <option value="price-desc">Price: High → Low</option>}
+              </select>
 
-                  <p className="mt-1 text-sm text-slate-600">
-                    {s.fabricType} · {s.colour}
-                    {s.pattern ? ` · ${s.pattern}` : ""} · {s.warehouse}
-                  </p>
+              <label htmlFor="pageSize" className="sr-only">
+                Items per page
+              </label>
+              <select
+                id="pageSize"
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="select-badge h-9 rounded-lg border border-slate-200 bg-white pl-3 text-xs font-semibold text-slate-700 hover:border-slate-300 focus:border-red-500 focus:outline-none cursor-pointer"
+              >
+                <option value={24}>24 / page</option>
+                <option value={48}>48 / page</option>
+                <option value={100}>100 / page</option>
+              </select>
 
-                  <div className="mt-3 flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-1.5">
-                      <ActiveBadge active={s.active} />
-                      {isLowStock(s.currentStock, s.lowStockThreshold) && s.currentStock > 0 && (
-                        <LowStockBadge />
-                      )}
-                      {Number(s.currentStock) <= 0 && <OutBadge />}
-                    </div>
-                    {(isOwner || isSales) && s.sellingPricePerMetre !== undefined && (
-                      hasPrice ? (
-                        <span className="font-semibold text-slate-800">
-                          {formatPrice(s.sellingPricePerMetre)}/m
-                        </span>
-                      ) : (
-                        <span className="text-xs font-semibold text-red-600">Price not set</span>
-                      )
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+              {/* View toggle (desktop md+) */}
+              <div
+                className="hidden md:inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5"
+                role="group"
+                aria-label="View layout"
+              >
+                <button
+                  type="button"
+                  onClick={() => setViewMode("table")}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                    viewMode === "table"
+                      ? "bg-white text-red-700 shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18M3 6h18M3 18h18" />
+                  </svg>
+                  Table
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                    viewMode === "grid"
+                      ? "bg-white text-red-700 shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"
+                    />
+                  </svg>
+                  Cards
+                </button>
+              </div>
+            </div>
           </div>
+
+          {pagedResults.length === 0 ? (
+            <div className="card text-center py-8">
+              <p className="font-semibold text-slate-800">No SKUs in this stock filter</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setStockTab("all");
+                  setPage(1);
+                }}
+                className="btn-secondary mt-3 text-xs"
+              >
+                Show all {results.length} SKUs
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Data Table (default when viewMode === "table") */}
+              {viewMode === "table" && (
+                <div className="hidden overflow-x-auto rounded-xl border border-red-100/90 bg-white/95 shadow-xs shadow-red-500/5 md:block">
+                  <table className="w-full min-w-[820px]">
+                    <thead className="border-b border-red-100 bg-red-50/50">
+                      <tr>
+                        <th className="th">SKU Code</th>
+                        <th className="th">Fabric</th>
+                        <th className="th">Specs</th>
+                        <th className="th">Warehouse</th>
+                        <th className="th text-right">In Stock</th>
+                        {(isOwner || isSales) && <th className="th text-right">Price / m</th>}
+                        <th className="th">Status</th>
+                        <th className="th text-right">
+                          <span className="sr-only">Actions</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {pagedResults.map((s) => {
+                        const qty = Number(s.currentStock);
+                        const sc = stockColor(qty);
+                        const hasPrice = s.sellingPricePerMetre !== undefined && Number(s.sellingPricePerMetre) > 0;
+                        const low = qty > 0 && isLowStock(qty, s.lowStockThreshold);
+                        return (
+                          <tr
+                            key={s.id}
+                            onClick={() => openSkuPreview(s)}
+                            className="cursor-pointer transition-colors hover:bg-red-50/40"
+                          >
+                            <td className="td">
+                              <div className="flex items-center gap-2">
+                                <span className={`h-2 w-2 shrink-0 rounded-full ${sc.dot}`} aria-hidden="true" />
+                                <span className="font-mono font-semibold text-red-700 whitespace-nowrap">
+                                  {s.code}
+                                </span>
+                              </div>
+                              {s.otherIdentifiers && (
+                                <p className="mt-0.5 max-w-[210px] truncate pl-4 font-mono text-[11px] text-slate-400">
+                                  {s.otherIdentifiers}
+                                </p>
+                              )}
+                            </td>
+                            <td className="td font-semibold text-slate-900">{s.fabricName}</td>
+                            <td className="td text-slate-600">
+                              <span>{s.fabricType}</span>
+                              <span className="text-slate-300"> · </span>
+                              <span>{s.colour}</span>
+                              {s.pattern && (
+                                <>
+                                  <span className="text-slate-300"> · </span>
+                                  <span className="text-slate-500">{s.pattern}</span>
+                                </>
+                              )}
+                            </td>
+                            <td className="td whitespace-nowrap">
+                              <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                                {s.warehouse}
+                              </span>
+                            </td>
+                            <td className="td text-right whitespace-nowrap">
+                              <div className="inline-flex items-center justify-end gap-1.5">
+                                {qty <= 0 && <OutBadge />}
+                                {low && <LowStockBadge />}
+                                <span className={`inline-flex rounded-full px-2.5 py-0.5 font-mono text-xs font-bold tabular-nums ${sc.badge}`}>
+                                  {formatMetres(qty)}
+                                </span>
+                              </div>
+                            </td>
+                            {(isOwner || isSales) && (
+                              <td className="td text-right whitespace-nowrap">
+                                {hasPrice ? (
+                                  <span className="font-mono font-semibold text-slate-900 tabular-nums">
+                                    {formatPrice(s.sellingPricePerMetre)}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs italic text-slate-400">Not set</span>
+                                )}
+                              </td>
+                            )}
+                            <td className="td whitespace-nowrap">
+                              <ActiveBadge active={s.active} />
+                            </td>
+                            <td className="td text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                              {canManageStock ? (
+                                <Link
+                                  to={`/skus/${s.id}`}
+                                  className="inline-flex items-center rounded-lg border border-red-200/80 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-red-300 hover:bg-red-50/70 hover:text-red-800"
+                                >
+                                  Details
+                                </Link>
+                              ) : !isOwner ? (
+                                <Link
+                                  to={`/sales/new?sku=${s.id}`}
+                                  className="inline-flex items-center rounded-lg bg-red-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-red-700"
+                                >
+                                  Sell
+                                </Link>
+                              ) : null}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Refined Card Grid (always on mobile < md, and on desktop when Cards view is active) */}
+              <div
+                className={`grid gap-3 sm:grid-cols-2 lg:grid-cols-3 ${
+                  viewMode === "table" ? "md:hidden" : ""
+                }`}
+              >
+                {pagedResults.map((s) => {
+                  const qty = Number(s.currentStock);
+                  const sc = stockColor(qty);
+                  const hasPrice = s.sellingPricePerMetre !== undefined && Number(s.sellingPricePerMetre) > 0;
+                  const low = qty > 0 && isLowStock(qty, s.lowStockThreshold);
+                  return (
+                    <div
+                      key={s.id}
+                      onClick={() => openSkuPreview(s)}
+                      className={`group flex flex-col justify-between rounded-xl border border-red-100/90 border-l-4 ${sc.accent} bg-white/95 p-4 text-left shadow-xs transition-all duration-200 hover:border-red-200 hover:shadow-md hover:-translate-y-0.5 cursor-pointer`}
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-mono text-sm font-bold text-slate-900 group-hover:text-red-700 break-all">
+                            {s.code}
+                          </span>
+                          <span className={`shrink-0 rounded-full px-2.5 py-0.5 font-mono text-xs font-bold tabular-nums ${sc.badge}`}>
+                            {formatMetres(qty)}
+                          </span>
+                        </div>
+
+                        <h3 className="mt-1.5 font-semibold text-slate-900 text-sm line-clamp-1">{s.fabricName}</h3>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          {s.fabricType} · {s.colour}
+                          {s.pattern ? ` · ${s.pattern}` : ""}
+                        </p>
+
+                        <span className="mt-2 inline-flex rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                          {s.warehouse}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5 text-xs">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <ActiveBadge active={s.active} />
+                          {low && <LowStockBadge />}
+                          {qty <= 0 && <OutBadge />}
+                        </div>
+                        {(isOwner || isSales) && s.sellingPricePerMetre !== undefined && (
+                          hasPrice ? (
+                            <span className="font-mono font-semibold text-slate-900 tabular-nums">
+                              {formatPrice(s.sellingPricePerMetre)}/m
+                            </span>
+                          ) : (
+                            <span className="italic text-slate-400">Not set</span>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Pagination Footer */}
+              {totalPages > 1 && (
+                <nav
+                  aria-label="Inventory pagination"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-100/90 bg-white/95 px-4 py-3 text-sm shadow-xs"
+                >
+                  <p className="text-xs text-slate-600">
+                    Page <span className="font-semibold text-slate-900">{safePage}</span> of{" "}
+                    <span className="font-semibold text-slate-900">{totalPages}</span>
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={safePage <= 1}
+                      onClick={() => changePage(safePage - 1)}
+                      className="btn-secondary min-h-9 px-3 py-1.5 text-xs"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      disabled={safePage >= totalPages}
+                      onClick={() => changePage(safePage + 1)}
+                      className="btn-secondary min-h-9 px-3 py-1.5 text-xs"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </nav>
+              )}
+            </>
+          )}
         </div>
       )}
 
@@ -566,6 +1025,9 @@ export function DashboardPage() {
         <div className="card mx-auto max-w-3xl text-center py-10">
           <p className="font-semibold text-slate-800">No products match your search</p>
           <p className="mt-1 text-sm text-slate-500">Try searching with a different term or clear filters.</p>
+          <button type="button" onClick={clearAll} className="btn-secondary mt-4 text-xs">
+            Reset search
+          </button>
         </div>
       )}
     </div>
