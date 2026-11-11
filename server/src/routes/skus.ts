@@ -110,7 +110,6 @@ router.get("/:id", async (req, res) => {
 
   const result = s.toJSON() as unknown as Record<string, unknown>;
   if (me.role !== "OWNER") {
-    delete result.sellingPricePerMetre;
     result.prices = [];
   }
   res.json(result);

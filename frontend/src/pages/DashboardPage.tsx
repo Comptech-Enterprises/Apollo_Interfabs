@@ -418,7 +418,7 @@ export function DashboardPage() {
                             <span className={`rounded-full px-2 py-0.5 font-bold ${sc.badge}`}>
                               {formatMetres(s.currentStock)}
                             </span>
-                            {(isOwner || isSales) && s.sellingPricePerMetre !== undefined && (
+                            {s.sellingPricePerMetre !== undefined && (
                               hasPrice ? (
                                 <span className="font-semibold text-slate-700">
                                   {formatPrice(s.sellingPricePerMetre)}/m
@@ -586,7 +586,7 @@ export function DashboardPage() {
               <p className="text-xs text-slate-500">In Stock</p>
               <p className="text-base font-bold text-slate-900">{formatMetres(selected.currentStock)}</p>
             </div>
-            {(isOwner || isSales) && selected.sellingPricePerMetre !== undefined && (
+            {selected.sellingPricePerMetre !== undefined && (
               <div>
                 <p className="text-xs text-slate-500">Price / Metre</p>
                 <p className="text-base font-bold text-slate-900">
@@ -633,7 +633,7 @@ export function DashboardPage() {
       {/* Loading skeleton when fetching list without prior results */}
       {!selected && !showSuggestions && searching && results.length === 0 && (
         <div className="space-y-3">
-          <TableSkeleton cols={isOwner || isSales ? 7 : 6} rows={6} />
+          <TableSkeleton cols={7} rows={6} />
         </div>
       )}
 
@@ -738,8 +738,8 @@ export function DashboardPage() {
                 <option value="name-asc">Fabric: A → Z</option>
                 <option value="stock-asc">Stock: Low → High</option>
                 <option value="stock-desc">Stock: High → Low</option>
-                {(isOwner || isSales) && <option value="price-asc">Price: Low → High</option>}
-                {(isOwner || isSales) && <option value="price-desc">Price: High → Low</option>}
+                <option value="price-asc">Price: Low → High</option>
+                <option value="price-desc">Price: High → Low</option>
               </select>
 
               <label htmlFor="pageSize" className="sr-only">
@@ -828,7 +828,7 @@ export function DashboardPage() {
                         <th className="th">Specs</th>
                         <th className="th">Warehouse</th>
                         <th className="th text-right">In Stock</th>
-                        {(isOwner || isSales) && <th className="th text-right">Price / m</th>}
+                        <th className="th text-right">Price / m</th>
                         <th className="th">Status</th>
                         <th className="th text-right">
                           <span className="sr-only">Actions</span>
@@ -886,17 +886,15 @@ export function DashboardPage() {
                                 </span>
                               </div>
                             </td>
-                            {(isOwner || isSales) && (
-                              <td className="td text-right whitespace-nowrap">
-                                {hasPrice ? (
-                                  <span className="font-mono font-semibold text-slate-900 tabular-nums">
-                                    {formatPrice(s.sellingPricePerMetre)}
-                                  </span>
-                                ) : (
-                                  <span className="text-xs italic text-slate-400">Not set</span>
-                                )}
-                              </td>
-                            )}
+                            <td className="td text-right whitespace-nowrap">
+                              {hasPrice ? (
+                                <span className="font-mono font-semibold text-slate-900 tabular-nums">
+                                  {formatPrice(s.sellingPricePerMetre)}
+                                </span>
+                              ) : (
+                                <span className="text-xs italic text-slate-400">Not set</span>
+                              )}
+                            </td>
                             <td className="td whitespace-nowrap">
                               <ActiveBadge active={s.active} />
                             </td>
@@ -970,7 +968,7 @@ export function DashboardPage() {
                           {low && <LowStockBadge />}
                           {qty <= 0 && <OutBadge />}
                         </div>
-                        {(isOwner || isSales) && s.sellingPricePerMetre !== undefined && (
+                        {s.sellingPricePerMetre !== undefined && (
                           hasPrice ? (
                             <span className="font-mono font-semibold text-slate-900 tabular-nums">
                               {formatPrice(s.sellingPricePerMetre)}/m
