@@ -156,6 +156,17 @@ router.post("/sale", requireRole("SALES"), async (req, res) => {
       return upd;
     });
 
+    const owners = await User.find({ role: "OWNER", active: true }).select("_id");
+    if (owners.length > 0) {
+      await Notification.insertMany(
+        owners.map((o) => ({
+          userId: o._id,
+          message: `Sale: ${formatMetres(d.quantityMetres)} of ${result.code} sold to ${d.buyerName} by ${me.name}`,
+          link: `/skus/${result._id}`,
+        }))
+      );
+    }
+
     res.status(201).json({
       ok: true,
       message: `Sale recorded. ${result.code} now has ${formatMetres(result.currentStock)} left.`,

@@ -18,7 +18,9 @@ router.get("/", async (req, res) => {
   if (q) {
     const tokens = q.split(/\s+/).filter(Boolean);
     filter.$and = tokens.map((token: string) => {
-      const regex = new RegExp(escapeRegex(token), "i");
+      const escaped = escapeRegex(token);
+      const flexPattern = escaped.replace(/[-]/g, "").split("").join("-?");
+      const regex = new RegExp(flexPattern, "i");
       return {
         $or: [
           { code: regex },
@@ -56,7 +58,7 @@ router.get("/", async (req, res) => {
       currentStock: Number(s.currentStock),
       lowStockThreshold: Number(s.lowStockThreshold),
       active: s.active,
-      sellingPricePerMetre: Number(s.sellingPricePerMetre),
+      ...(me.role !== "MANAGER" ? { sellingPricePerMetre: Number(s.sellingPricePerMetre) } : {}),
     }))
   );
 });
@@ -109,7 +111,10 @@ router.get("/:id", async (req, res) => {
   }
 
   const result = s.toJSON() as unknown as Record<string, unknown>;
-  if (me.role !== "OWNER") {
+  if (me.role === "MANAGER") {
+    delete result.sellingPricePerMetre;
+    result.prices = [];
+  } else if (me.role !== "OWNER") {
     result.prices = [];
   }
   res.json(result);
