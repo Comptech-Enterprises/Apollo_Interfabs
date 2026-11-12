@@ -25,7 +25,7 @@ export function EditSkuPage() {
           fabricName: s.fabricName,
           fabricType: s.fabricType,
           variant: s.variant,
-          pattern: s.pattern ?? "",
+
           otherIdentifiers: s.otherIdentifiers ?? "",
           warehouse: s.warehouse,
           sellingPricePerMetre: s.sellingPricePerMetre !== undefined ? String(s.sellingPricePerMetre) : "",
