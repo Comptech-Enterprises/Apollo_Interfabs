@@ -266,11 +266,13 @@ export function DashboardPage() {
         <div className="mb-4 flex items-end justify-between">
           <h1 className="text-2xl font-bold text-slate-900">Inventory</h1>
         </div>
-        {!isOwner && (
+        {(isSales || canManageStock) && !isOwner && (
           <div className="flex flex-wrap gap-2">
-            <Link to="/sales/new" className="btn-primary flex-1 text-center">
-              Record Sale
-            </Link>
+            {isSales && (
+              <Link to="/sales/new" className="btn-primary flex-1 text-center">
+                Record Sale
+              </Link>
+            )}
             {canManageStock && (
               <Link to="/purchases" className="btn-secondary flex-1 text-center">
                 Record Purchase
@@ -611,7 +613,7 @@ export function DashboardPage() {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            {!isOwner && (
+            {isSales && (
               <Link to={`/sales/new?sku=${selected.id}`} className="btn-primary flex-1 text-center text-xs">
                 Sell this SKU
               </Link>

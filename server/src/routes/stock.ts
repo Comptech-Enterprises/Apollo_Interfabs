@@ -111,7 +111,7 @@ router.post("/stock-in", requireRole("MANAGER"), async (req, res) => {
   }
 });
 
-router.post("/sale", async (req, res) => {
+router.post("/sale", requireRole("SALES"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const p = saleSchema.safeParse(req.body);
   if (!p.success) {
