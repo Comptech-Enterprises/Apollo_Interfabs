@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { apiPo } from "@/lib/api";
 import { Field, PageHeader, SubmitButton } from "@/components/ui";
 
 export function NewPOPage() {
-  const [itemName, setItemName] = useState("");
+  const [searchParams] = useSearchParams();
+  const [itemName, setItemName] = useState(searchParams.get("item") ?? "");
   const [quantity, setQuantity] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [description, setDescription] = useState("");

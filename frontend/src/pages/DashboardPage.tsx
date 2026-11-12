@@ -908,13 +908,22 @@ export function DashboardPage() {
                                 >
                                   Details
                                 </Link>
-                              ) : !isOwner ? (
-                                <Link
-                                  to={`/sales/new?sku=${s.id}`}
-                                  className="inline-flex items-center rounded-lg bg-red-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-red-700"
-                                >
-                                  Sell
-                                </Link>
+                              ) : isSales ? (
+                                Number(s.currentStock) <= 0 ? (
+                                  <Link
+                                    to={`/po/new?item=${encodeURIComponent(s.fabricName)}`}
+                                    className="inline-flex items-center rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-amber-600"
+                                  >
+                                    PO
+                                  </Link>
+                                ) : (
+                                  <Link
+                                    to={`/sales/new?sku=${s.id}`}
+                                    className="inline-flex items-center rounded-lg bg-red-600 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-red-700"
+                                  >
+                                    Sell
+                                  </Link>
+                                )
                               ) : null}
                             </td>
                           </tr>
