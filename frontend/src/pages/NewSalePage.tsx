@@ -279,18 +279,7 @@ export function NewSalePage() {
               </div>
             </Field>
 
-            <div className={`grid ${canSeePrice ? "grid-cols-2" : "grid-cols-1"} gap-4`}>
-              {canSeePrice && (
-                <Field label="Selling price / m" name="price" hint="Set by owner">
-                  <input
-                    id="price"
-                    readOnly
-                    tabIndex={-1}
-                    value={sku && sku.sellingPricePerMetre !== undefined ? formatPrice(sku.sellingPricePerMetre) : "-"}
-                    className="input bg-slate-100"
-                  />
-                </Field>
-              )}
+            <div className="grid grid-cols-1 gap-4">
               <Field label="Available" name="avail">
                 <input
                   id="avail"
@@ -366,12 +355,6 @@ export function NewSalePage() {
               />
             </Field>
 
-            {total !== null && sku && (
-              <p className="rounded-lg bg-brand-50 p-3 text-sm font-medium text-brand-900">
-                {formatMetres(q)} x {formatPrice(sku.sellingPricePerMetre)} ={" "}
-                <span className="font-bold">{formatPrice(total)}</span>
-              </p>
-            )}
 
             <SubmitButton loading={loading} disabled={Boolean(tooMuch)} className="btn-primary w-full cursor-pointer">
               Record sale
