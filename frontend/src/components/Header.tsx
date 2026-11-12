@@ -9,7 +9,7 @@ type Item = { href: string; label: string };
 export function Header({ items, userName, role }: { items: Item[]; userName: string; role: string }) {
   const [open, setOpen] = useState(false);
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, can } = useAuth();
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -33,7 +33,14 @@ export function Header({ items, userName, role }: { items: Item[]; userName: str
 
   const active = (href: string) =>
     location.pathname === href || (href !== "/dashboard" && location.pathname.startsWith(href + "/"));
-  const roleLabel = role === "OWNER" ? "Owner" : role === "MANAGER" ? "Manager" : "Sales";
+  const roleLabel =
+    role === "SUPER_ADMIN"
+      ? "Super Admin"
+      : role === "OWNER"
+      ? "Owner"
+      : role === "MANAGER"
+      ? "Manager"
+      : "Sales";
 
   return (
     <div>
@@ -41,7 +48,7 @@ export function Header({ items, userName, role }: { items: Item[]; userName: str
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
           <Logo />
           <div className="flex items-center gap-1">
-            {role === "OWNER" && <NotificationBell />}
+            {can("notifications.view") && <NotificationBell />}
             <button
               ref={btnRef}
               type="button"

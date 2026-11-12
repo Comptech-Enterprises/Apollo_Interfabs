@@ -64,10 +64,11 @@ export async function apiFetch<T = any>(
 // Authentication
 export const apiAuth = {
   login: (credentials: { username: string; password: string }) =>
-    apiFetch<{ ok: boolean; token: string; user: { name: string; role: string; mustChangePassword: boolean } }>(
-      "/auth/login",
-      { method: "POST", body: JSON.stringify(credentials) }
-    ),
+    apiFetch<{
+      ok: boolean;
+      token: string;
+      user: { name: string; role: string; mustChangePassword: boolean; permissions?: Record<string, boolean> };
+    }>("/auth/login", { method: "POST", body: JSON.stringify(credentials) }),
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
     apiFetch<{ ok: boolean; message: string }>("/auth/change-password", {
       method: "POST",
@@ -82,7 +83,7 @@ export const apiSkus = {
     return apiFetch<any[]>(`/skus${query}`);
   },
   get: (id: string) => apiFetch<any>(`/skus/${id}`),
-  facets: () => apiFetch<{ types: string[]; colours: string[]; patterns: string[] }>("/skus/facets"),
+  facets: () => apiFetch<{ types: string[]; variants: string[]; colours: string[]; patterns: string[] }>("/skus/facets"),
   create: (data: any) => apiFetch<{ ok: boolean; message: string; sku: any }>("/skus", {
     method: "POST",
     body: JSON.stringify(data),
@@ -161,6 +162,31 @@ export const apiPo = {
     }),
 };
 
+// Fabric Types
+export const apiFabricTypes = {
+  list: () => apiFetch<any[]>("/fabric-types"),
+  listAll: () => apiFetch<any[]>("/fabric-types/all"),
+  create: (name: string) =>
+    apiFetch<{ ok: boolean; message: string; fabricType: any }>("/fabric-types", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+  update: (id: string, name: string) =>
+    apiFetch<{ ok: boolean; message: string }>(`/fabric-types/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ name }),
+    }),
+  toggleActive: (id: string, active: boolean) =>
+    apiFetch<{ ok: boolean; message: string }>(`/fabric-types/${id}/active`, {
+      method: "PATCH",
+      body: JSON.stringify({ active }),
+    }),
+};
+
+// Item Code Check
+export const apiCheckItemCode = (code: string) =>
+  apiFetch<{ available: boolean; message: string }>(`/stock/check-item-code?code=${encodeURIComponent(code)}`);
+
 // Notifications
 export const apiNotifications = {
   list: () => apiFetch<any[]>("/notifications"),
@@ -185,4 +211,33 @@ export const apiUsers = {
       method: "PATCH",
       body: JSON.stringify({ active }),
     }),
+};
+
+// Access Control
+export const apiAccessControl = {
+  getMyPermissions: () =>
+    apiFetch<{ ok: boolean; role: string; permissions: Record<string, boolean> }>("/access-control/my-permissions"),
+  getAll: () =>
+    apiFetch<{
+      ok: boolean;
+      catalog: any[];
+      defaults: Record<string, Record<string, boolean>>;
+      roles: Record<string, Record<string, boolean>>;
+    }>("/access-control"),
+  updateRole: (role: "OWNER" | "MANAGER" | "SALES", permissions: Record<string, boolean>) =>
+    apiFetch<{ ok: boolean; message: string; roles: Record<string, Record<string, boolean>> }>(
+      `/access-control/${role}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ permissions }),
+      }
+    ),
+  reset: (role?: "OWNER" | "MANAGER" | "SALES") =>
+    apiFetch<{ ok: boolean; message: string; roles: Record<string, Record<string, boolean>> }>(
+      "/access-control/reset",
+      {
+        method: "POST",
+        body: JSON.stringify(role ? { role } : {}),
+      }
+    ),
 };

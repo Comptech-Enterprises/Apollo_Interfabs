@@ -3,14 +3,17 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { apiStock, apiSkus } from "@/lib/api";
 import { formatDate, formatMetres, formatPrice } from "@/lib/format";
-import { EmptyState, PageHeader } from "@/components/ui";
+import { AccessDenied, EmptyState, PageHeader } from "@/components/ui";
 import { Pagination, VoidedBadge } from "@/components/bits";
 import { VoidButton } from "@/components/VoidButton";
 import { TableSkeleton } from "@/components/TableSkeleton";
 
 export function SalesLogPage() {
-  const { user } = useAuth();
-  const isOwner = user?.role === "OWNER";
+  const { can, defaultRoute } = useAuth();
+  const hasAccess = can("modules.sales") && can("sales.view");
+  const canCreateSale = can("sales.create");
+  const canVoidSale = can("sales.void");
+  const canViewSkuDetails = can("inventory.viewDetails");
   const [skus, setSkus] = useState<any[]>([]);
   const [filters, setFilters] = useState({ sku: "", buyer: "", from: "", to: "" });
   const [page, setPage] = useState(1);
@@ -23,10 +26,12 @@ export function SalesLogPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!hasAccess) return;
     apiSkus.list().then(setSkus).catch(console.error);
-  }, []);
+  }, [hasAccess]);
 
   const loadSales = (p = page, f = filters) => {
+    if (!hasAccess) return;
     setLoading(true);
     apiStock
       .getSales({
@@ -43,7 +48,11 @@ export function SalesLogPage() {
 
   useEffect(() => {
     loadSales(page, filters);
-  }, [page]);
+  }, [page, hasAccess]);
+
+  if (!hasAccess) {
+    return <AccessDenied fallbackTo={defaultRoute} />;
+  }
 
   const handleFilterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +74,7 @@ export function SalesLogPage() {
       <PageHeader
         title="Sales log"
         actions={
-          !isOwner ? (
+          canCreateSale ? (
             <Link to="/sales/new" className="btn-primary">
               Record sale
             </Link>
@@ -85,7 +94,7 @@ export function SalesLogPage() {
             <option value="">All SKUs</option>
             {skus.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.code} - {s.fabricName} ({s.colour})
+                {s.code} - {s.fabricName} ({s.variant})
               </option>
             ))}
           </select>
@@ -135,7 +144,7 @@ export function SalesLogPage() {
       </form>
 
       {loading && data.rows.length === 0 ? (
-        <TableSkeleton cols={isOwner ? 7 : 6} />
+        <TableSkeleton cols={canVoidSale ? 7 : 6} />
       ) : data.rows.length === 0 ? (
         <EmptyState
           title={filtered ? "No sales match your filters" : "No sales recorded yet"}
@@ -153,7 +162,7 @@ export function SalesLogPage() {
                   <th className="th text-right">Sale Price</th>
                   <th className="th text-right">Sold Price</th>
                   <th className="th pl-6">Buyer</th>
-                  {isOwner && <th className="th text-right"><span className="sr-only">Actions</span></th>}
+                  {canVoidSale && <th className="th text-right"><span className="sr-only">Actions</span></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -172,15 +181,19 @@ export function SalesLogPage() {
                     >
                       <td className="td whitespace-nowrap text-slate-600">{formatDate(r.saleDate)}</td>
                       <td className="td font-mono font-semibold text-red-700">
-                        <Link to={`/skus/${r.skuId}`} className="hover:underline">
-                          {r.sku?.code ?? "—"}
-                        </Link>
+                        {canViewSkuDetails ? (
+                          <Link to={`/skus/${r.skuId}`} className="hover:underline">
+                            {r.sku?.code ?? "—"}
+                          </Link>
+                        ) : (
+                          <span>{r.sku?.code ?? "—"}</span>
+                        )}
                       </td>
                       <td className="td text-right font-mono whitespace-nowrap">{formatMetres(r.quantityMetres)}</td>
                       <td className="td text-right font-mono whitespace-nowrap">{formatPrice(r.pricePerMetre)}</td>
                       <td className="td text-right font-mono font-semibold whitespace-nowrap">{formatPrice(r.soldPricePerMetre)}</td>
                       <td className="td pl-6">{r.buyerName ?? "-"}</td>
-                      {isOwner && (
+                      {canVoidSale && (
                         <td className="td text-right">
                           {r.voidedAt ? (
                             <VoidedBadge />
@@ -216,9 +229,15 @@ export function SalesLogPage() {
                   className={`card hover:shadow-md hover:-translate-y-0.5 ${r.voidedAt ? "opacity-60" : ""} ${bg}`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <Link to={`/skus/${r.skuId}`} className="break-all font-mono font-bold text-brand-700">
-                      {r.sku?.code ?? "—"}
-                    </Link>
+                    {canViewSkuDetails ? (
+                      <Link to={`/skus/${r.skuId}`} className="break-all font-mono font-bold text-brand-700">
+                        {r.sku?.code ?? "—"}
+                      </Link>
+                    ) : (
+                      <span className="break-all font-mono font-bold text-slate-900">
+                        {r.sku?.code ?? "—"}
+                      </span>
+                    )}
                     <span className="shrink-0 text-sm text-slate-600">{formatDate(r.saleDate)}</span>
                   </div>
                   <p className="mt-1 text-sm">
@@ -228,7 +247,7 @@ export function SalesLogPage() {
                   <div className="mt-3">
                     {r.voidedAt ? (
                       <VoidedBadge />
-                    ) : isOwner ? (
+                    ) : canVoidSale ? (
                       <VoidButton
                         id={r.id}
                         kind="sale"

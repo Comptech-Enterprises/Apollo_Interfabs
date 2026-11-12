@@ -1,17 +1,21 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { apiUsers } from "@/lib/api";
 import { formatDate } from "@/lib/format";
-import { PageHeader, Field, SubmitButton } from "@/components/ui";
+import { AccessDenied, PageHeader, Field, SubmitButton } from "@/components/ui";
 import { ActiveBadge } from "@/components/bits";
 import { TableSkeleton } from "@/components/TableSkeleton";
 import { PasswordInput } from "@/components/PasswordInput";
 import { ToggleActiveButton } from "@/components/ToggleActiveButton";
 
 export function UsersPage() {
-  const { user } = useAuth();
+  const { user, can, defaultRoute } = useAuth();
+  const hasAccess = can("modules.users") && can("users.view");
+  const canCreate = can("users.create");
+  const canResetPw = can("users.resetPassword");
+  const canToggleActive = can("users.toggleActive");
+
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,11 +34,8 @@ export function UsersPage() {
   const [resetting, setResetting] = useState(false);
   const resetDialogRef = useRef<HTMLDialogElement>(null);
 
-  if (user?.role !== "OWNER") {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   const loadUsers = () => {
+    if (!hasAccess) return;
     setLoading(true);
     apiUsers
       .list()
@@ -45,7 +46,11 @@ export function UsersPage() {
 
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [hasAccess]);
+
+  if (!hasAccess) {
+    return <AccessDenied fallbackTo={defaultRoute} />;
+  }
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,7 +108,7 @@ export function UsersPage() {
   return (
     <>
       <PageHeader title="Users" />
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+      <div className={`grid gap-6 ${canCreate ? "lg:grid-cols-[1fr_380px]" : ""}`}>
         {/* Users list */}
         <div>
           {loading && users.length === 0 ? (
@@ -116,7 +121,7 @@ export function UsersPage() {
                     <div className="min-w-0">
                       <p className="break-words font-semibold text-slate-900">
                         {u.name}
-                        {u.name === user.name && (
+                        {u.name === user?.name && (
                           <span className="ml-2 text-xs font-normal text-slate-500">(you)</span>
                         )}
                       </p>
@@ -125,32 +130,43 @@ export function UsersPage() {
                         {u.email}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {u.role === "OWNER" ? "Owner" : u.role === "MANAGER" ? "Manager" : "Sales"} · added{" "}
+                        {u.role === "SUPER_ADMIN"
+                          ? "Super Admin"
+                          : u.role === "OWNER"
+                          ? "Owner"
+                          : u.role === "MANAGER"
+                          ? "Manager"
+                          : "Sales"}{" "}
+                        · added{" "}
                         {formatDate(u.createdAt)}
                       </p>
                     </div>
                     <ActiveBadge active={u.active} />
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="btn-secondary cursor-pointer"
-                      onClick={() => openResetDialog({ id: u.id, name: u.name })}
-                    >
-                      Reset password
-                    </button>
-                    {u.name !== user.name && (
-                      <ToggleActiveButton
-                        noun="user"
-                        active={u.active}
-                        action={async (active) => {
-                          const res = await apiUsers.toggleActive(u.id, active);
-                          loadUsers();
-                          return res;
-                        }}
-                      />
-                    )}
-                  </div>
+                  {(canResetPw || (canToggleActive && u.name !== user?.name)) && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {canResetPw && (
+                        <button
+                          type="button"
+                          className="btn-secondary cursor-pointer"
+                          onClick={() => openResetDialog({ id: u.id, name: u.name })}
+                        >
+                          Reset password
+                        </button>
+                      )}
+                      {canToggleActive && u.name !== user?.name && (
+                        <ToggleActiveButton
+                          noun="user"
+                          active={u.active}
+                          action={async (active) => {
+                            const res = await apiUsers.toggleActive(u.id, active);
+                            loadUsers();
+                            return res;
+                          }}
+                        />
+                      )}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -158,7 +174,8 @@ export function UsersPage() {
         </div>
 
         {/* Create user form */}
-        <form onSubmit={handleCreateUser} className="card space-y-4 h-fit" noValidate>
+        {canCreate && (
+          <form onSubmit={handleCreateUser} className="card space-y-4 h-fit" noValidate>
           <h2 className="text-lg font-bold text-slate-900">Add user</h2>
           <Field label="Full Name" name="name" error={formErrors.name}>
             <input
@@ -233,7 +250,8 @@ export function UsersPage() {
           <SubmitButton loading={creating} className="btn-primary w-full cursor-pointer">
             Create user
           </SubmitButton>
-        </form>
+          </form>
+        )}
       </div>
 
       {/* Reset Password Dialog */}

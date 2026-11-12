@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { apiPo } from "@/lib/api";
 import { formatDate, formatMetres } from "@/lib/format";
-import { EmptyState, PageHeader } from "@/components/ui";
+import { AccessDenied, EmptyState, PageHeader } from "@/components/ui";
 import { Pagination } from "@/components/bits";
 import { TableSkeleton } from "@/components/TableSkeleton";
 
@@ -19,7 +19,12 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function PurchaseOrdersPage() {
-  const { user } = useAuth();
+  const { can, defaultRoute } = useAuth();
+  const hasAccess = can("modules.po") && can("po.view");
+  const canReview = can("po.review");
+  const canCreate = can("po.create");
+  const canViewAll = can("po.viewAllUsers");
+
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
   const [data, setData] = useState<{ rows: any[]; count: number; page: number; pages: number }>({
@@ -32,6 +37,7 @@ export function PurchaseOrdersPage() {
   const [reviewing, setReviewing] = useState<string | null>(null);
 
   const loadPOs = (p = page, status = statusFilter) => {
+    if (!hasAccess) return;
     setLoading(true);
     apiPo
       .list(p, status || undefined)
@@ -41,8 +47,13 @@ export function PurchaseOrdersPage() {
   };
 
   useEffect(() => {
+    if (!hasAccess) return;
     loadPOs(page, statusFilter);
-  }, [page, statusFilter]);
+  }, [page, statusFilter, hasAccess]);
+
+  if (!hasAccess) {
+    return <AccessDenied fallbackTo={defaultRoute} />;
+  }
 
   const handleReview = async (id: string, status: "APPROVED" | "REJECTED") => {
     setReviewing(id);
@@ -57,15 +68,12 @@ export function PurchaseOrdersPage() {
     }
   };
 
-  const isOwner = user?.role === "OWNER";
-  const isSales = user?.role === "SALES";
-
   return (
     <>
       <PageHeader
         title="Purchase Orders"
         actions={
-          isSales ? (
+          canCreate ? (
             <Link to="/po/new" className="btn-primary">
               New PO
             </Link>
@@ -73,7 +81,7 @@ export function PurchaseOrdersPage() {
         }
       />
 
-      {isOwner && (
+      {(canReview || canViewAll) && (
         <div className="mb-4 flex gap-2">
           {["", "PENDING", "APPROVED", "REJECTED"].map((s) => (
             <button
@@ -90,11 +98,11 @@ export function PurchaseOrdersPage() {
       )}
 
       {loading && data.rows.length === 0 ? (
-        <TableSkeleton cols={isOwner ? 7 : 6} />
+        <TableSkeleton cols={canReview ? 7 : 6} />
       ) : data.rows.length === 0 ? (
         <EmptyState
           title="No purchase orders"
-          body={isSales ? "Raise a PO when a customer needs something not in stock." : "Purchase orders will appear here."}
+          body={canCreate ? "Raise a PO when a customer needs something not in stock." : "Purchase orders will appear here."}
         />
       ) : (
         <>
@@ -108,7 +116,7 @@ export function PurchaseOrdersPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Customer</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">By</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
-                  {isOwner && (
+                  {canReview && (
                     <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>
                   )}
                 </tr>
@@ -125,7 +133,7 @@ export function PurchaseOrdersPage() {
                     <td className="px-4 py-3.5 text-sm text-slate-700">{r.customerName}</td>
                     <td className="px-4 py-3.5 text-sm text-slate-600">{r.createdByName}</td>
                     <td className="px-4 py-3.5"><StatusBadge status={r.status} /></td>
-                    {isOwner && (
+                    {canReview && (
                       <td className="px-4 py-3.5 text-right">
                         {r.status === "PENDING" && (
                           <div className="flex justify-end gap-2">
@@ -167,7 +175,7 @@ export function PurchaseOrdersPage() {
                   {formatMetres(r.quantity)} · by {r.createdByName} · {formatDate(r.createdAt)}
                 </p>
                 {r.description && <p className="mt-1 text-xs text-slate-400 italic">{r.description}</p>}
-                {isOwner && r.status === "PENDING" && (
+                {canReview && r.status === "PENDING" && (
                   <div className="mt-3 flex gap-2">
                     <button
                       onClick={() => handleReview(r.id, "APPROVED")}

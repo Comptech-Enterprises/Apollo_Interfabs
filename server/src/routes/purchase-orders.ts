@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { PurchaseOrder, User, Notification } from "../db.js";
-import { requireAuth, requireRole, type AuthenticatedRequest } from "../middleware/auth.js";
+import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
+import { hasPermission, requirePermission } from "../access-control.js";
 import { purchaseOrderSchema, poReviewSchema, zodMessage } from "../validation.js";
 
 const router = Router();
 router.use(requireAuth);
 
-router.get("/", async (req, res) => {
+router.get("/", requirePermission("po.view"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const page = Math.max(1, Number(req.query.page) || 1);
   const status = req.query.status as string | undefined;
@@ -14,10 +15,8 @@ router.get("/", async (req, res) => {
 
   const filter: Record<string, any> = {};
 
-  if (me.role === "SALES") {
+  if (!(await hasPermission(me.role, "po.viewAllUsers"))) {
     filter.createdById = me.uid;
-  } else if (me.role === "MANAGER") {
-    filter.status = "APPROVED";
   }
 
   if (status && ["PENDING", "APPROVED", "REJECTED"].includes(status)) {
@@ -43,7 +42,7 @@ router.get("/", async (req, res) => {
   });
 });
 
-router.post("/", requireRole("SALES"), async (req, res) => {
+router.post("/", requirePermission("po.create"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const p = purchaseOrderSchema.safeParse(req.body);
   if (!p.success) {
@@ -60,7 +59,7 @@ router.post("/", requireRole("SALES"), async (req, res) => {
     createdById: me.uid,
   });
 
-  const owners = await User.find({ role: "OWNER", active: true }).select("_id");
+  const owners = await User.find({ role: { $in: ["OWNER", "SUPER_ADMIN"] }, active: true }).select("_id");
   if (owners.length > 0) {
     await Notification.insertMany(
       owners.map((o) => ({
@@ -74,7 +73,7 @@ router.post("/", requireRole("SALES"), async (req, res) => {
   res.status(201).json({ ok: true, message: "PO submitted for approval." });
 });
 
-router.patch("/:id/review", requireRole("OWNER"), async (req, res) => {
+router.patch("/:id/review", requirePermission("po.review"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const p = poReviewSchema.safeParse(req.body);
   if (!p.success) {
@@ -104,19 +103,6 @@ router.patch("/:id/review", requireRole("OWNER"), async (req, res) => {
     link: "/po",
   };
   await Notification.create(creatorNotif);
-
-  if (p.data.status === "APPROVED") {
-    const managers = await User.find({ role: "MANAGER", active: true }).select("_id");
-    if (managers.length > 0) {
-      await Notification.insertMany(
-        managers.map((m) => ({
-          userId: m._id,
-          message: `PO approved: ${po.itemName} — ${po.quantity}m for ${po.customerName}. Please procure.`,
-          link: "/po",
-        }))
-      );
-    }
-  }
 
   res.json({ ok: true, message: `PO ${p.data.status.toLowerCase()}.` });
 });

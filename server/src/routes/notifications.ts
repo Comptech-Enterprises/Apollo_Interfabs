@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { Notification } from "../db.js";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
+import { requirePermission } from "../access-control.js";
 
 const router = Router();
-router.use(requireAuth);
+router.use(requireAuth, requirePermission("notifications.view"));
 
 router.get("/unread-count", async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;

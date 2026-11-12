@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { Sku, PriceChange, AuditLog, User, Notification, withTransaction } from "../db.js";
-import { requireAuth, requireRole, type AuthenticatedRequest } from "../middleware/auth.js";
+import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
+import { getRolePermissions, hasPermission, requirePermission } from "../access-control.js";
 import { skuSchema, zodMessage } from "../validation.js";
 
 const router = Router();
@@ -10,87 +11,102 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-router.get("/", async (req, res) => {
-  const me = (req as unknown as AuthenticatedRequest).user;
-  const q = String(req.query.q ?? "").trim();
-  const filter: Record<string, any> = {};
+router.get(
+  "/",
+  requirePermission("inventory.view", "sales.create", "sales.view", "purchases.view"),
+  async (req, res) => {
+    const me = (req as unknown as AuthenticatedRequest).user;
+    const perms = await getRolePermissions(me.role);
+    const q = String(req.query.q ?? "").trim();
+    const filter: Record<string, any> = {};
 
-  if (q) {
-    const tokens = q.split(/\s+/).filter(Boolean);
-    filter.$and = tokens.map((token: string) => {
-      const escaped = escapeRegex(token);
-      const flexPattern = escaped.replace(/[-]/g, "").split("").join("-?");
-      const regex = new RegExp(flexPattern, "i");
-      return {
-        $or: [
-          { code: regex },
-          { fabricName: regex },
-          { fabricType: regex },
-          { colour: regex },
-          { pattern: regex },
-          { otherIdentifiers: regex },
-        ],
-      };
+    if (q) {
+      const tokens = q.split(/\s+/).filter(Boolean);
+      filter.$and = tokens.map((token: string) => {
+        const escaped = escapeRegex(token);
+        const flexPattern = escaped.replace(/[-]/g, "").split("").join("-?");
+        const regex = new RegExp(flexPattern, "i");
+        return {
+          $or: [
+            { code: regex },
+            { fabricName: regex },
+            { fabricType: regex },
+            { variant: regex },
+            { pattern: regex },
+            { otherIdentifiers: regex },
+          ],
+        };
+      });
+    }
+
+    if (me.warehouses && me.warehouses.length > 0) {
+      filter.warehouse = { $in: me.warehouses };
+    }
+    if (!perms["inventory.viewInactive"]) {
+      filter.active = true;
+    }
+    if (!perms["inventory.viewUnpriced"]) {
+      filter.sellingPricePerMetre = { $gt: 0 };
+    }
+
+    const canViewPrices = Boolean(perms["inventory.viewPrices"]);
+    const skus = await Sku.find(filter).sort({ code: 1 }).limit(500);
+    res.json(
+      skus.map((s) => ({
+        id: s.id || s._id.toString(),
+        code: s.code,
+        itemCode: (s as any).itemCode || "",
+        fabricName: s.fabricName,
+        fabricType: s.fabricType,
+        variant: s.variant,
+        pattern: s.pattern,
+        otherIdentifiers: s.otherIdentifiers,
+        warehouse: s.warehouse,
+        currentStock: Number(s.currentStock),
+        lowStockThreshold: Number(s.lowStockThreshold),
+        active: s.active,
+        isPriced: Number(s.sellingPricePerMetre) > 0,
+        ...(canViewPrices ? { sellingPricePerMetre: Number(s.sellingPricePerMetre) } : {}),
+      }))
+    );
+  }
+);
+
+router.get(
+  "/facets",
+  requirePermission("inventory.view", "sales.create", "sales.view", "purchases.view"),
+  async (req, res) => {
+    const me = (req as unknown as AuthenticatedRequest).user;
+    const perms = await getRolePermissions(me.role);
+    const filter: Record<string, any> = {};
+    if (me.warehouses && me.warehouses.length > 0) {
+      filter.warehouse = { $in: me.warehouses };
+    }
+    if (!perms["inventory.viewInactive"]) {
+      filter.active = true;
+    }
+    if (!perms["inventory.viewUnpriced"]) {
+      filter.sellingPricePerMetre = { $gt: 0 };
+    }
+
+    const [types, variants, patterns] = await Promise.all([
+      Sku.distinct("fabricType", filter),
+      Sku.distinct("variant", filter),
+      Sku.distinct("pattern", filter),
+    ]);
+
+    res.json({
+      types: (types as string[]).filter(Boolean).sort(),
+      variants: (variants as string[]).filter(Boolean).sort(),
+      colours: (variants as string[]).filter(Boolean).sort(),
+      patterns: (patterns as string[]).filter((p): p is string => Boolean(p)).sort(),
     });
   }
+);
 
-  if (me.warehouses && me.warehouses.length > 0) {
-    filter.warehouse = { $in: me.warehouses };
-  }
-  if (me.role !== "OWNER") {
-    filter.active = true;
-  }
-  if (me.role === "SALES") {
-    filter.sellingPricePerMetre = { $gt: 0 };
-  }
-
-  const skus = await Sku.find(filter).sort({ code: 1 }).limit(500);
-  res.json(
-    skus.map((s) => ({
-      id: s.id || s._id.toString(),
-      code: s.code,
-      fabricName: s.fabricName,
-      fabricType: s.fabricType,
-      colour: s.colour,
-      pattern: s.pattern,
-      otherIdentifiers: s.otherIdentifiers,
-      warehouse: s.warehouse,
-      currentStock: Number(s.currentStock),
-      lowStockThreshold: Number(s.lowStockThreshold),
-      active: s.active,
-      ...(me.role !== "MANAGER" ? { sellingPricePerMetre: Number(s.sellingPricePerMetre) } : {}),
-    }))
-  );
-});
-
-router.get("/facets", async (req, res) => {
+router.get("/:id", requirePermission("inventory.viewDetails", "inventory.editSku"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
-  const filter: Record<string, any> = {};
-  if (me.warehouses && me.warehouses.length > 0) {
-    filter.warehouse = { $in: me.warehouses };
-  }
-  if (me.role !== "OWNER") {
-    filter.active = true;
-  }
-  if (me.role === "SALES") {
-    filter.sellingPricePerMetre = { $gt: 0 };
-  }
-
-  const [types, colours, patterns] = await Promise.all([
-    Sku.distinct("fabricType", filter),
-    Sku.distinct("colour", filter),
-    Sku.distinct("pattern", filter),
-  ]);
-
-  res.json({
-    types: (types as string[]).filter(Boolean).sort(),
-    colours: (colours as string[]).filter(Boolean).sort(),
-    patterns: (patterns as string[]).filter((p): p is string => Boolean(p)).sort(),
-  });
-});
-
-router.get("/:id", async (req, res) => {
-  const me = (req as unknown as AuthenticatedRequest).user;
+  const perms = await getRolePermissions(me.role);
   const s = await Sku.findById(req.params.id)
     .populate({
       path: "stockIns",
@@ -110,17 +126,29 @@ router.get("/:id", async (req, res) => {
     return;
   }
 
-  const result = s.toJSON() as unknown as Record<string, unknown>;
-  if (me.role === "MANAGER") {
+  const result = s.toJSON() as unknown as Record<string, any>;
+  if (!perms["inventory.viewPrices"]) {
     delete result.sellingPricePerMetre;
+  }
+  if (!perms["inventory.viewPriceHistory"]) {
     result.prices = [];
-  } else if (me.role !== "OWNER") {
-    result.prices = [];
+  }
+  if (!perms["purchases.view"]) {
+    result.stockIns = [];
+  } else if (!perms["purchases.viewCostPrice"] && Array.isArray(result.stockIns)) {
+    result.stockIns = result.stockIns.map((si: any) => {
+      const copy = { ...si };
+      delete copy.costPricePerMetre;
+      return copy;
+    });
+  }
+  if (!perms["sales.view"]) {
+    result.sales = [];
   }
   res.json(result);
 });
 
-router.post("/", requireRole("OWNER", "MANAGER"), async (req, res) => {
+router.post("/", requirePermission("inventory.createSku"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const p = skuSchema.safeParse(req.body);
   if (!p.success) {
@@ -128,10 +156,17 @@ router.post("/", requireRole("OWNER", "MANAGER"), async (req, res) => {
     return;
   }
 
+  const canEditPrice = await hasPermission(me.role, "inventory.editSellingPrice");
+
   try {
     const sku = await withTransaction(async (session) => {
+      const skuData = { ...p.data } as any;
+      if (!skuData.itemCode) skuData.itemCode = skuData.code;
+      if (!canEditPrice) {
+        skuData.sellingPricePerMetre = 0;
+      }
       const created = new Sku({
-        ...p.data,
+        ...skuData,
         createdById: me.uid,
       });
       await created.save({ session });
@@ -160,7 +195,7 @@ router.post("/", requireRole("OWNER", "MANAGER"), async (req, res) => {
         { session }
       );
 
-      const owners = await User.find({ role: "OWNER", active: true }).select("_id").session(session || null);
+      const owners = await User.find({ role: { $in: ["OWNER", "SUPER_ADMIN"] }, active: true }).select("_id").session(session || null);
       if (owners.length > 0) {
         await Notification.insertMany(
           owners.map((o) => ({
@@ -185,7 +220,7 @@ router.post("/", requireRole("OWNER", "MANAGER"), async (req, res) => {
   }
 });
 
-router.put("/:id", requireRole("OWNER", "MANAGER"), async (req, res) => {
+router.put("/:id", requirePermission("inventory.editSku"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const p = skuSchema.safeParse(req.body);
   if (!p.success) {
@@ -194,6 +229,7 @@ router.put("/:id", requireRole("OWNER", "MANAGER"), async (req, res) => {
   }
 
   const skuId = String(req.params.id);
+  const canEditPrice = await hasPermission(me.role, "inventory.editSellingPrice");
 
   try {
     await withTransaction(async (session) => {
@@ -201,7 +237,7 @@ router.put("/:id", requireRole("OWNER", "MANAGER"), async (req, res) => {
       if (!old) throw new Error("NOT_FOUND");
 
       const updateData = { ...p.data };
-      if (me.role === "MANAGER") {
+      if (!canEditPrice) {
         updateData.sellingPricePerMetre = Number(old.sellingPricePerMetre);
       }
 
@@ -251,7 +287,7 @@ router.put("/:id", requireRole("OWNER", "MANAGER"), async (req, res) => {
   }
 });
 
-router.patch("/:id/active", requireRole("OWNER", "MANAGER"), async (req, res) => {
+router.patch("/:id/active", requirePermission("inventory.toggleSkuStatus"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const active = Boolean(req.body.active);
   const skuId = String(req.params.id);

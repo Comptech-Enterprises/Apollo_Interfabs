@@ -6,7 +6,8 @@ import { Field, PageHeader, SubmitButton } from "@/components/ui";
 import { PasswordInput } from "@/components/PasswordInput";
 
 export function AccountPage() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, can } = useAuth();
+  const canChangePw = can("account.changePassword");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,39 +55,52 @@ export function AccountPage() {
           Please choose a new password to replace your temporary one.
         </p>
       )}
-      <div className="mx-auto max-w-md">
-        <form onSubmit={handleSubmit} className="card space-y-4" noValidate>
-          <h2 className="text-lg font-bold text-slate-900">Change password</h2>
-          <Field label="Current password" name="currentPassword" error={errors.currentPassword}>
-            <PasswordInput
-              id="currentPassword"
-              name="currentPassword"
-              autoComplete="current-password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              required
-            />
-          </Field>
-          <Field
-            label="New password"
-            name="newPassword"
-            error={errors.newPassword}
-            hint="At least 8 characters"
-          >
-            <PasswordInput
-              id="newPassword"
+      <div className="mx-auto max-w-md space-y-4">
+        {user && (
+          <div className="card">
+            <p className="text-sm text-slate-500">Signed in as</p>
+            <p className="mt-0.5 text-lg font-bold text-slate-900">{user.name}</p>
+            <p className="text-xs font-semibold text-red-600">{user.role}</p>
+          </div>
+        )}
+        {canChangePw ? (
+          <form onSubmit={handleSubmit} className="card space-y-4" noValidate>
+            <h2 className="text-lg font-bold text-slate-900">Change password</h2>
+            <Field label="Current password" name="currentPassword" error={errors.currentPassword}>
+              <PasswordInput
+                id="currentPassword"
+                name="currentPassword"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+              />
+            </Field>
+            <Field
+              label="New password"
               name="newPassword"
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              minLength={8}
-            />
-          </Field>
-          <SubmitButton loading={loading} className="btn-primary w-full cursor-pointer">
-            Update password
-          </SubmitButton>
-        </form>
+              error={errors.newPassword}
+              hint="At least 8 characters"
+            >
+              <PasswordInput
+                id="newPassword"
+                name="newPassword"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={8}
+              />
+            </Field>
+            <SubmitButton loading={loading} className="btn-primary w-full cursor-pointer">
+              Update password
+            </SubmitButton>
+          </form>
+        ) : (
+          <div className="card text-sm text-slate-600">
+            Password changes are disabled for your role. Contact the Owner if you need a password reset.
+          </div>
+        )}
       </div>
     </>
   );

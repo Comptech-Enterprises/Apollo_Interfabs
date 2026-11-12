@@ -1,13 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 import { apiSkus, apiStock } from "@/lib/api";
 import { formatMetres, formatPrice, stockColor } from "@/lib/format";
 import { todayIST } from "@/lib/validation";
-import { Field, PageHeader, SubmitButton } from "@/components/ui";
+import { AccessDenied, Field, PageHeader, SubmitButton } from "@/components/ui";
 import { CardSkeleton } from "@/components/TableSkeleton";
 
 export function NewSalePage() {
+  const { can, defaultRoute } = useAuth();
+  const canCreateSale = can("sales.create");
+  const canSeePrice = can("inventory.viewPrices");
   const [searchParams] = useSearchParams();
   const initialSkuParam = searchParams.get("sku") || "";
 
@@ -29,11 +33,12 @@ export function NewSalePage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!canCreateSale) return;
     setSkusLoading(true);
     apiSkus
       .list()
       .then((data) => {
-        const priced = data.filter((s: any) => s.active && Number(s.sellingPricePerMetre) > 0);
+        const priced = data.filter((s: any) => s.active && (s.isPriced ?? Number(s.sellingPricePerMetre) > 0));
         setSkus(priced);
         if (initialSkuParam) {
           const found = priced.find((s: any) => s.id === initialSkuParam);
@@ -45,7 +50,7 @@ export function NewSalePage() {
       })
       .catch(console.error)
       .finally(() => setSkusLoading(false));
-  }, [initialSkuParam]);
+  }, [initialSkuParam, canCreateSale]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -61,15 +66,19 @@ export function NewSalePage() {
     const tokens = filter.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if (tokens.length === 0) return [];
     return skus.filter((s) => {
-      const haystack = `${s.code} ${s.fabricName ?? ""} ${s.fabricType ?? ""} ${s.colour ?? ""} ${s.pattern ?? ""} ${s.otherIdentifiers ?? ""} ${s.warehouse ?? ""}`.toLowerCase();
+      const haystack = `${s.code} ${s.fabricName ?? ""} ${s.fabricType ?? ""} ${s.variant ?? ""} ${s.pattern ?? ""} ${s.otherIdentifiers ?? ""} ${s.warehouse ?? ""}`.toLowerCase();
       return tokens.every((t) => haystack.includes(t));
     });
   }, [skus, filter]);
 
   const sku = useMemo(() => skus.find((s) => s.id === skuId), [skus, skuId]);
   const q = Number(qty);
-  const total = sku && q > 0 ? Number(sku.sellingPricePerMetre) * q : null;
+  const total = canSeePrice && sku && sku.sellingPricePerMetre !== undefined && q > 0 ? Number(sku.sellingPricePerMetre) * q : null;
   const tooMuch = sku && q > sku.currentStock;
+
+  if (!canCreateSale) {
+    return <AccessDenied fallbackTo={defaultRoute} />;
+  }
 
   const handleSelectSku = (s: any) => {
     setSkuId(s.id);
@@ -140,7 +149,7 @@ export function NewSalePage() {
         buyerName: buyerName.trim(),
       });
       toast.success(res.message);
-      navigate("/sales");
+      navigate(can("modules.sales") && can("sales.view") ? "/sales" : defaultRoute);
     } catch (err: any) {
       if (err.fields) setErrors(err.fields);
       toast.error(err.message || "Failed to record sale");
@@ -168,8 +177,8 @@ export function NewSalePage() {
               error={errors.skuId}
               hint={
                 sku
-                  ? `${sku.fabricName} · ${sku.fabricType} · ${sku.colour}${sku.pattern ? ` · ${sku.pattern}` : ""} · ${sku.warehouse}`
-                  : "Search by SKU code, fabric name, colour or type and pick from suggestions."
+                  ? `${sku.fabricName} · ${sku.fabricType} · ${sku.variant}${sku.pattern ? ` · ${sku.pattern}` : ""} · ${sku.warehouse}`
+                  : "Search by SKU code, fabric name, variant or type and pick from suggestions."
               }
             >
               <div ref={wrapperRef} className="relative">
@@ -201,7 +210,7 @@ export function NewSalePage() {
                     }
                   }}
                   onKeyDown={handleKeyDown}
-                  placeholder="Search SKU code, fabric name, colour, type..."
+                  placeholder="Search SKU code, fabric name, variant, type..."
                   maxLength={100}
                   className="input pl-10 pr-9"
                   autoComplete="off"
@@ -244,7 +253,7 @@ export function NewSalePage() {
                                     <span className={`rounded-full px-2 py-0.5 font-bold ${sc.badge}`}>
                                       {formatMetres(s.currentStock)}
                                     </span>
-                                    {s.sellingPricePerMetre !== undefined && (
+                                    {canSeePrice && s.sellingPricePerMetre !== undefined && (
                                       <span className="font-semibold text-slate-700">
                                         {formatPrice(s.sellingPricePerMetre)}/m
                                       </span>
@@ -252,7 +261,7 @@ export function NewSalePage() {
                                   </div>
                                 </div>
                                 <p className="mt-0.5 text-xs text-slate-600 opacity-80">
-                                  {s.fabricType} · {s.colour}
+                                  {s.fabricType} · {s.variant}
                                   {s.pattern ? ` · ${s.pattern}` : ""} · {s.warehouse}
                                 </p>
                               </div>
@@ -270,16 +279,18 @@ export function NewSalePage() {
               </div>
             </Field>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Selling price / m" name="price" hint="Set by owner">
-                <input
-                  id="price"
-                  readOnly
-                  tabIndex={-1}
-                  value={sku ? formatPrice(sku.sellingPricePerMetre) : "-"}
-                  className="input bg-slate-100"
-                />
-              </Field>
+            <div className={`grid ${canSeePrice ? "grid-cols-2" : "grid-cols-1"} gap-4`}>
+              {canSeePrice && (
+                <Field label="Selling price / m" name="price" hint="Set by owner">
+                  <input
+                    id="price"
+                    readOnly
+                    tabIndex={-1}
+                    value={sku && sku.sellingPricePerMetre !== undefined ? formatPrice(sku.sellingPricePerMetre) : "-"}
+                    className="input bg-slate-100"
+                  />
+                </Field>
+              )}
               <Field label="Available" name="avail">
                 <input
                   id="avail"

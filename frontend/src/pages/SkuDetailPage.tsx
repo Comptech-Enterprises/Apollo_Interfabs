@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { apiSkus } from "@/lib/api";
 import { formatDate, formatDateTime, formatMetres, formatPrice, isLowStock } from "@/lib/format";
-import { PageHeader } from "@/components/ui";
+import { AccessDenied, PageHeader } from "@/components/ui";
 import { ActiveBadge, LowStockBadge, VoidedBadge } from "@/components/bits";
 import { SkuActiveToggle } from "@/components/SkuActiveToggle";
 import { CardSkeleton } from "@/components/TableSkeleton";
@@ -11,12 +11,24 @@ import { VoidButton } from "@/components/VoidButton";
 
 export function SkuDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { can, defaultRoute } = useAuth();
+  const hasAccess = can("inventory.viewDetails");
+  const canRecordPurchase = can("purchases.create");
+  const canEditSku = can("inventory.editSku");
+  const canToggleStatus = can("inventory.toggleSkuStatus");
+  const canViewPrices = can("inventory.viewPrices");
+  const canViewPriceHistory = can("inventory.viewPriceHistory");
+  const canViewPurchases = can("purchases.view");
+  const canViewCostPrice = can("purchases.viewCostPrice");
+  const canVoidPurchase = can("purchases.void");
+  const canViewSales = can("sales.view");
+  const canVoidSale = can("sales.void");
+
   const [sku, setSku] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadData = () => {
-    if (!id) return;
+    if (!id || !hasAccess) return;
     setLoading(true);
     apiSkus
       .get(id)
@@ -27,7 +39,11 @@ export function SkuDetailPage() {
 
   useEffect(() => {
     loadData();
-  }, [id]);
+  }, [id, hasAccess]);
+
+  if (!hasAccess) {
+    return <AccessDenied fallbackTo={defaultRoute} />;
+  }
 
   if (loading) {
     return <div className="mx-auto max-w-2xl"><CardSkeleton /></div>;
@@ -50,15 +66,19 @@ export function SkuDetailPage() {
         title={sku.code}
         actions={
           <>
-            {user?.role !== "OWNER" && (
+            {canRecordPurchase && (
               <Link to={`/stock-in/new?sku=${sku.id}`} className="btn-primary">
                 Record stock in
               </Link>
             )}
-            <Link to={`/skus/${sku.id}/edit`} className="btn-secondary">
-              Edit
-            </Link>
-            <SkuActiveToggle id={sku.id} active={sku.active} onToggle={() => loadData()} />
+            {canEditSku && (
+              <Link to={`/skus/${sku.id}/edit`} className="btn-secondary">
+                Edit
+              </Link>
+            )}
+            {canToggleStatus && (
+              <SkuActiveToggle id={sku.id} active={sku.active} onToggle={() => loadData()} />
+            )}
           </>
         }
       />
@@ -73,10 +93,16 @@ export function SkuDetailPage() {
             <dt className="text-slate-500">In stock</dt>
             <dd className="text-lg font-bold text-slate-900">{formatMetres(sku.currentStock)}</dd>
           </div>
-          {user?.role === "OWNER" && sku.sellingPricePerMetre !== undefined && (
+          {canViewPrices && sku.sellingPricePerMetre !== undefined && (
             <div>
               <dt className="text-slate-500">Selling price / m</dt>
-              <dd className="text-lg font-bold text-slate-900">{formatPrice(sku.sellingPricePerMetre)}</dd>
+              <dd className="text-lg font-bold text-slate-900">
+                {Number(sku.sellingPricePerMetre) > 0 ? (
+                  formatPrice(sku.sellingPricePerMetre)
+                ) : (
+                  <span className="text-slate-400 italic text-sm font-medium">Not set</span>
+                )}
+              </dd>
             </div>
           )}
           <div>
@@ -94,82 +120,93 @@ export function SkuDetailPage() {
         </dl>
       </div>
 
-      <h2 className="mb-2 text-lg font-bold text-slate-900">Purchase history</h2>
-      {!sku.stockIns || sku.stockIns.length === 0 ? (
-        <p className="card mb-6 text-sm text-slate-600">No stock has been recorded for this SKU yet.</p>
-      ) : (
-        <ul className="mb-6 space-y-2">
-          {sku.stockIns.map((p: any) => (
-            <li
-              key={p.id}
-              className={`card flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between ${
-                p.voidedAt ? "opacity-60" : ""
-              }`}
-            >
-              <div className="min-w-0 text-sm">
-                <p className="font-semibold text-slate-900">
-                  {formatDate(p.purchaseDate)} - {formatMetres(p.quantityMetres)} {p.voidedAt && <VoidedBadge />}
-                </p>
-                <p className="break-words text-slate-600">
-                  Supplier: {p.supplierName} - Cost: {formatPrice(p.costPricePerMetre)}/m
-                </p>
-                {p.voidedAt && (
-                  <p className="text-xs text-slate-500">
-                    Voided {formatDateTime(p.voidedAt)}: {p.voidReason}
-                  </p>
-                )}
-              </div>
-              {!p.voidedAt && (
-                <VoidButton
-                  id={p.id}
-                  kind="stockin"
-                  label={`${formatDate(p.purchaseDate)}, ${formatMetres(p.quantityMetres)} from ${p.supplierName}`}
-                  onSuccess={loadData}
-                />
-              )}
-            </li>
-          ))}
-        </ul>
+      {canViewPurchases && (
+        <>
+          <h2 className="mb-2 text-lg font-bold text-slate-900">Purchase history</h2>
+          {!sku.stockIns || sku.stockIns.length === 0 ? (
+            <p className="card mb-6 text-sm text-slate-600">No stock has been recorded for this SKU yet.</p>
+          ) : (
+            <ul className="mb-6 space-y-2">
+              {sku.stockIns.map((p: any) => (
+                <li
+                  key={p.id}
+                  className={`card flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between ${
+                    p.voidedAt ? "opacity-60" : ""
+                  }`}
+                >
+                  <div className="min-w-0 text-sm">
+                    <p className="font-semibold text-slate-900">
+                      {formatDate(p.purchaseDate)} - {formatMetres(p.quantityMetres)} {p.voidedAt && <VoidedBadge />}
+                    </p>
+                    <p className="break-words text-slate-600">
+                      Supplier: {p.supplierName}
+                      {canViewCostPrice && p.costPricePerMetre !== undefined
+                        ? ` - Cost: ${formatPrice(p.costPricePerMetre)}/m`
+                        : ""}
+                    </p>
+                    {p.voidedAt && (
+                      <p className="text-xs text-slate-500">
+                        Voided {formatDateTime(p.voidedAt)}: {p.voidReason}
+                      </p>
+                    )}
+                  </div>
+                  {canVoidPurchase && !p.voidedAt && (
+                    <VoidButton
+                      id={p.id}
+                      kind="stockin"
+                      label={`${formatDate(p.purchaseDate)}, ${formatMetres(p.quantityMetres)} from ${p.supplierName}`}
+                      onSuccess={loadData}
+                    />
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
 
-      <h2 className="mb-2 text-lg font-bold text-slate-900">Recent sales</h2>
-      {!sku.sales || sku.sales.length === 0 ? (
-        <p className="card mb-6 text-sm text-slate-600">No sales for this SKU yet.</p>
-      ) : (
-        <ul className="mb-6 space-y-2">
-          {sku.sales.map((x: any) => (
-            <li
-              key={x.id}
-              className={`card flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between ${
-                x.voidedAt ? "opacity-60" : ""
-              }`}
-            >
-              <div className="min-w-0 text-sm">
-                <p className="font-semibold text-slate-900">
-                  {formatDate(x.saleDate)} - {formatMetres(x.quantityMetres)} at {formatPrice(x.pricePerMetre)}/m{" "}
-                  {x.voidedAt && <VoidedBadge />}
-                </p>
-                <p className="break-words text-slate-600">Buyer: {x.buyerName ?? "-"}</p>
-                {x.voidedAt && (
-                  <p className="text-xs text-slate-500">
-                    Voided {formatDateTime(x.voidedAt)}: {x.voidReason}
-                  </p>
-                )}
-              </div>
-              {!x.voidedAt && (
-                <VoidButton
-                  id={x.id}
-                  kind="sale"
-                  label={`${formatDate(x.saleDate)}, ${formatMetres(x.quantityMetres)}`}
-                  onSuccess={loadData}
-                />
-              )}
-            </li>
-          ))}
-        </ul>
+      {canViewSales && (
+        <>
+          <h2 className="mb-2 text-lg font-bold text-slate-900">Recent sales</h2>
+          {!sku.sales || sku.sales.length === 0 ? (
+            <p className="card mb-6 text-sm text-slate-600">No sales for this SKU yet.</p>
+          ) : (
+            <ul className="mb-6 space-y-2">
+              {sku.sales.map((x: any) => (
+                <li
+                  key={x.id}
+                  className={`card flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between ${
+                    x.voidedAt ? "opacity-60" : ""
+                  }`}
+                >
+                  <div className="min-w-0 text-sm">
+                    <p className="font-semibold text-slate-900">
+                      {formatDate(x.saleDate)} - {formatMetres(x.quantityMetres)} at {formatPrice(x.pricePerMetre)}/m{" "}
+                      {x.voidedAt && <VoidedBadge />}
+                    </p>
+                    <p className="break-words text-slate-600">Buyer: {x.buyerName ?? "-"}</p>
+                    {x.voidedAt && (
+                      <p className="text-xs text-slate-500">
+                        Voided {formatDateTime(x.voidedAt)}: {x.voidReason}
+                      </p>
+                    )}
+                  </div>
+                  {canVoidSale && !x.voidedAt && (
+                    <VoidButton
+                      id={x.id}
+                      kind="sale"
+                      label={`${formatDate(x.saleDate)}, ${formatMetres(x.quantityMetres)}`}
+                      onSuccess={loadData}
+                    />
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
 
-      {user?.role === "OWNER" && sku.prices && sku.prices.length > 0 && (
+      {canViewPriceHistory && sku.prices && sku.prices.length > 0 && (
         <>
           <h2 className="mb-2 text-lg font-bold text-slate-900">Selling price history</h2>
           <ul className="card divide-y divide-slate-100 text-sm">

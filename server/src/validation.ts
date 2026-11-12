@@ -33,9 +33,10 @@ export const skuCode = z
 
 export const skuSchema = z.object({
   code: skuCode,
+  itemCode: text("Item code", 40).optional(),
   fabricName: text("Fabric name"),
   fabricType: text("Fabric type", 50),
-  colour: text("Colour", 50),
+  variant: text("Variant", 50),
   pattern: optionalText(50),
   otherIdentifiers: optionalText(300),
   warehouse: z.enum(WAREHOUSES, { errorMap: () => ({ message: "Select a warehouse" }) }),
@@ -44,14 +45,15 @@ export const skuSchema = z.object({
 });
 
 export const stockInSchema = z.object({
-  itemName: text("Item name"),
+  itemCode: text("Item code", 40),
+  fabricType: text("Fabric type", 50),
+  variant: text("Variant", 50),
+  warehouse: z.enum(WAREHOUSES, { errorMap: () => ({ message: "Select a warehouse" }) }),
   supplierName: text("Supplier name"),
-  quantityMetres: money("Quantity"),
-  purchaseDate: dateString,
+  quantityInches: nonNegative("Quantity inches"),
+  quantityMetres: money("Quantity metres"),
   costPricePerMetre: money("Cost price"),
-  colour: optionalText(50),
-  qualityStatus: z.enum(["APPROVED", "REJECTED", "PENDING"]).optional().default("APPROVED"),
-  qualityNotes: optionalText(300),
+  purchaseDate: dateString,
 });
 
 export const updateQualitySchema = z.object({

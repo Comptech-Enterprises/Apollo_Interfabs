@@ -1,11 +1,14 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { PageHeader } from "@/components/ui";
+import { AccessDenied, PageHeader } from "@/components/ui";
 import { SkuForm } from "@/components/SkuForm";
 
 export function NewSkuPage() {
-  const { user } = useAuth();
+  const { user, can, defaultRoute } = useAuth();
+  if (!can("inventory.createSku")) {
+    return <AccessDenied fallbackTo={defaultRoute} />;
+  }
   return (
     <>
       <PageHeader

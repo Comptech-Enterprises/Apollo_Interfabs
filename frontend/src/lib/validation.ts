@@ -47,7 +47,7 @@ export const skuSchema = z.object({
   code: skuCode,
   fabricName: text("Fabric name"),
   fabricType: text("Fabric type", 50),
-  colour: text("Colour", 50),
+  variant: text("Variant", 50),
   pattern: optionalText(50),
   otherIdentifiers: optionalText(300),
   warehouse: z.enum(WAREHOUSES, { errorMap: () => ({ message: "Select a warehouse" }) }),

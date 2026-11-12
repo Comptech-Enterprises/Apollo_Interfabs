@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { apiSkus } from "@/lib/api";
 import { formatMetres, formatPrice, isLowStock, stockColor } from "@/lib/format";
 import { ActiveBadge, LowStockBadge, OutBadge } from "@/components/bits";
+import { AccessDenied } from "@/components/ui";
 import { TableSkeleton } from "@/components/TableSkeleton";
 
 type Sku = {
@@ -11,7 +12,7 @@ type Sku = {
   code: string;
   fabricName: string;
   fabricType: string;
-  colour: string;
+  variant: string;
   pattern: string | null;
   otherIdentifiers: string | null;
   warehouse: string;
@@ -21,23 +22,28 @@ type Sku = {
   active: boolean;
 };
 
-type Facets = { types: string[]; colours: string[]; patterns: string[] };
+type Facets = { types: string[]; variants: string[]; colours: string[]; patterns: string[] };
 type SortKey = "code-asc" | "code-desc" | "stock-asc" | "stock-desc" | "name-asc" | "price-asc" | "price-desc";
 type StockTab = "all" | "in" | "low" | "out";
 type ViewMode = "table" | "grid";
 
 export function DashboardPage() {
-  const { user } = useAuth();
-  const isOwner = user?.role === "OWNER";
-  const canManageStock = isOwner || user?.role === "MANAGER";
-  const isSales = user?.role === "SALES";
-  const canSeePrice = isOwner || isSales;
+  const { user, can, defaultRoute } = useAuth();
+  const hasInventoryAccess = can("modules.inventory") && can("inventory.view");
+  const isOwner = user?.role === "OWNER" || user?.role === "SUPER_ADMIN";
+  const canSell = can("sales.create");
+  const canRecordPurchase = can("purchases.create");
+  const canPurchaseView = can("modules.purchases") && can("purchases.view");
+  const canNewPo = can("po.create");
+  const canSeePrice = can("inventory.viewPrices");
+  const canViewDetails = can("inventory.viewDetails");
+  const canViewInactive = can("inventory.viewInactive");
 
   const [query, setQuery] = useState("");
-  const [facets, setFacets] = useState<Facets>({ types: [], colours: [], patterns: [] });
+  const [facets, setFacets] = useState<Facets>({ types: [], variants: [], colours: [], patterns: [] });
   const [filters, setFilters] = useState({
     type: "",
-    colour: "",
+    variant: "",
     pattern: "",
     status: "",
     low: false,
@@ -65,18 +71,19 @@ export function DashboardPage() {
   const skipNextSearchRef = useRef(false);
 
   useEffect(() => {
+    if (!hasInventoryAccess) return;
     apiSkus.facets().then(setFacets).catch(console.error);
-  }, []);
+  }, [hasInventoryAccess]);
 
   const doSearch = useCallback(
     async (q: string, f: typeof filters, forceShow = false) => {
+      if (!hasInventoryAccess) return;
       setSearching(true);
       try {
         const data = await apiSkus.list(q.trim());
         const filtered = data.filter((s: Sku) => {
-          if (isSales && (!s.sellingPricePerMetre || Number(s.sellingPricePerMetre) <= 0)) return false;
           if (f.type && s.fabricType !== f.type) return false;
-          if (f.colour && s.colour !== f.colour) return false;
+          if (f.variant && s.variant !== f.variant) return false;
           if (f.pattern && s.pattern !== f.pattern) return false;
           if (f.status === "active" && !s.active) return false;
           if (f.status === "inactive" && s.active) return false;
@@ -86,7 +93,7 @@ export function DashboardPage() {
 
         setSuggestions(filtered);
         setPage(1);
-        if (forceShow || q.trim().length > 0 || f.type || f.colour || f.pattern || f.status || f.low) {
+        if (forceShow || q.trim().length > 0 || f.type || f.variant || f.pattern || f.status || f.low) {
           setResults(filtered);
           setHasSearched(true);
         } else {
@@ -99,11 +106,12 @@ export function DashboardPage() {
         setSearching(false);
       }
     },
-    [isSales]
+    [hasInventoryAccess]
   );
 
   // Debounced search when query changes
   useEffect(() => {
+    if (!hasInventoryAccess) return;
     if (skipNextSearchRef.current) {
       skipNextSearchRef.current = false;
       return;
@@ -112,7 +120,7 @@ export function DashboardPage() {
       if (query.trim().length > 0) {
         doSearch(query, filters);
         setShowSuggestions(true);
-      } else if (filters.type || filters.colour || filters.pattern || filters.status || filters.low) {
+      } else if (filters.type || filters.variant || filters.pattern || filters.status || filters.low) {
         doSearch("", filters);
         setShowSuggestions(false);
       } else {
@@ -185,7 +193,7 @@ export function DashboardPage() {
 
   const clearAll = () => {
     setQuery("");
-    setFilters({ type: "", colour: "", pattern: "", status: "", low: false });
+    setFilters({ type: "", variant: "", pattern: "", status: "", low: false });
     setStockTab("all");
     setResults([]);
     setHasSearched(false);
@@ -197,7 +205,7 @@ export function DashboardPage() {
   };
 
   const activeFilters = Boolean(
-    filters.type || filters.colour || filters.pattern || filters.status || filters.low
+    filters.type || filters.variant || filters.pattern || filters.status || filters.low
   );
 
   // Stock breakdown counts across current search results
@@ -260,6 +268,10 @@ export function DashboardPage() {
     listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  if (!hasInventoryAccess) {
+    return <AccessDenied fallbackTo={defaultRoute} />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Top action header */}
@@ -267,19 +279,19 @@ export function DashboardPage() {
         <div className="mb-4 flex items-end justify-between">
           <h1 className="text-2xl font-bold text-slate-900">Inventory</h1>
         </div>
-        {(isSales || canManageStock) && !isOwner && (
+        {!isOwner && (canSell || canRecordPurchase || canNewPo) && (
           <div className="flex flex-wrap gap-2">
-            {isSales && (
+            {canSell && (
               <Link to="/sales/new" className="btn-primary flex-1 text-center">
                 Record Sale
               </Link>
             )}
-            {canManageStock && (
-              <Link to="/purchases" className="btn-secondary w-full text-center">
+            {canRecordPurchase && (
+              <Link to={canPurchaseView ? "/purchases" : "/stock-in/new"} className="btn-secondary flex-1 text-center">
                 Record Purchase
               </Link>
             )}
-            {isSales && (
+            {canNewPo && (
               <Link to="/po/new" className="btn-secondary flex-1 text-center">
                 New PO
               </Link>
@@ -318,7 +330,7 @@ export function DashboardPage() {
               if (query.trim() && suggestions.length > 0) setShowSuggestions(true);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Search by SKU code, fabric name, colour, type..."
+            placeholder="Search by SKU code, fabric name, variant, type..."
             className="w-full rounded-2xl border border-red-100 bg-white/90 py-4.5 pl-14 pr-32 text-base sm:text-lg shadow-xs backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 focus:border-red-400 focus:bg-white focus:shadow-md focus:shadow-red-500/10 focus:outline-none focus:ring-4 focus:ring-red-100"
             autoComplete="off"
           />
@@ -428,7 +440,7 @@ export function DashboardPage() {
                           </div>
                         </div>
                         <p className="mt-0.5 text-xs text-slate-600 opacity-80">
-                          {s.fabricType} · {s.colour}
+                          {s.fabricType} · {s.variant}
                           {s.pattern ? ` · ${s.pattern}` : ""} · {s.warehouse}
                         </p>
                       </div>
@@ -464,14 +476,14 @@ export function DashboardPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-600">Colour</label>
+                <label className="mb-1 block text-xs font-semibold text-slate-600">Variant</label>
                 <select
-                  value={filters.colour}
-                  onChange={(e) => setFilters({ ...filters, colour: e.target.value })}
+                  value={filters.variant}
+                  onChange={(e) => setFilters({ ...filters, variant: e.target.value })}
                   className="input h-10 min-h-10 py-1.5 text-sm"
                 >
                   <option value="">All</option>
-                  {facets.colours.map((c) => (
+                  {facets.variants.map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>
@@ -493,7 +505,7 @@ export function DashboardPage() {
                   ))}
                 </select>
               </div>
-              {canManageStock && (
+              {canViewInactive && (
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-600">Status</label>
                   <select
@@ -562,7 +574,7 @@ export function DashboardPage() {
               </div>
               <h2 className="mt-0.5 text-lg font-bold text-slate-900">{selected.fabricName}</h2>
               <p className="text-sm text-slate-600">
-                {selected.fabricType} · {selected.colour}
+                {selected.fabricType} · {selected.variant}
                 {selected.pattern ? ` · ${selected.pattern}` : ""} · {selected.warehouse}
               </p>
               {selected.otherIdentifiers && (
@@ -584,9 +596,9 @@ export function DashboardPage() {
               <p className="text-xs text-slate-500">In Stock</p>
               <p className="text-base font-bold text-slate-900">{formatMetres(selected.currentStock)}</p>
             </div>
-            {canSeePrice && selected.sellingPricePerMetre !== undefined && (
+            {canSeePrice && (
               <div>
-                <p className="text-xs text-slate-500">Price / Metre</p>
+                <p className="text-xs text-slate-500">Selling Price / m</p>
                 <p className="text-base font-bold text-slate-900">
                   {Number(selected.sellingPricePerMetre) > 0 ? (
                     formatPrice(selected.sellingPricePerMetre)
@@ -609,17 +621,13 @@ export function DashboardPage() {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            {isSales && (
+            {canSell && (
               <Link to={`/sales/new?sku=${selected.id}`} className="btn-primary flex-1 text-center text-xs">
                 Sell this SKU
               </Link>
             )}
-            {canManageStock && !isOwner && (
-              <Link to={`/stock-in/new?sku=${selected.id}`} className="btn-secondary flex-1 text-center text-xs">
-                Stock in
-              </Link>
-            )}
-            {canManageStock && (
+
+            {canViewDetails && (
               <Link to={`/skus/${selected.id}`} className="btn-secondary text-xs">
                 Full details
               </Link>
@@ -823,7 +831,7 @@ export function DashboardPage() {
                       <tr>
                         <th className="th">SKU Code</th>
                         <th className="th">Fabric</th>
-                        <th className="th">Specs</th>
+                        <th className="th">Variant</th>
                         <th className="th">Warehouse</th>
                         <th className="th text-right">In Stock</th>
                         {canSeePrice && <th className="th text-right">Price / m</th>}
@@ -859,17 +867,7 @@ export function DashboardPage() {
                               )}
                             </td>
                             <td className="td font-semibold text-slate-900">{s.fabricName}</td>
-                            <td className="td text-slate-600">
-                              <span>{s.fabricType}</span>
-                              <span className="text-slate-300"> · </span>
-                              <span>{s.colour}</span>
-                              {s.pattern && (
-                                <>
-                                  <span className="text-slate-300"> · </span>
-                                  <span className="text-slate-500">{s.pattern}</span>
-                                </>
-                              )}
-                            </td>
+                            <td className="td text-slate-600">{s.variant}</td>
                             <td className="td whitespace-nowrap">
                               <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
                                 {s.warehouse}
@@ -899,21 +897,23 @@ export function DashboardPage() {
                               <ActiveBadge active={s.active} />
                             </td>
                             <td className="td text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                              {canManageStock ? (
+                              {isOwner && canViewDetails ? (
                                 <Link
                                   to={`/skus/${s.id}`}
                                   className="inline-flex items-center rounded-lg border border-red-200/80 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-red-300 hover:bg-red-50/70 hover:text-red-800"
                                 >
                                   Details
                                 </Link>
-                              ) : isSales ? (
+                              ) : canSell ? (
                                 Number(s.currentStock) <= 0 ? (
-                                  <Link
-                                    to={`/po/new?item=${encodeURIComponent(s.fabricName)}`}
-                                    className="inline-flex items-center rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-amber-600"
-                                  >
-                                    PO
-                                  </Link>
+                                  canNewPo ? (
+                                    <Link
+                                      to={`/po/new?item=${encodeURIComponent(s.fabricName)}`}
+                                      className="inline-flex items-center rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-amber-600"
+                                    >
+                                      PO
+                                    </Link>
+                                  ) : null
                                 ) : (
                                   <Link
                                     to={`/sales/new?sku=${s.id}`}
@@ -922,6 +922,20 @@ export function DashboardPage() {
                                     Sell
                                   </Link>
                                 )
+                              ) : canNewPo && Number(s.currentStock) <= 0 ? (
+                                <Link
+                                  to={`/po/new?item=${encodeURIComponent(s.fabricName)}`}
+                                  className="inline-flex items-center rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-amber-600"
+                                >
+                                  PO
+                                </Link>
+                              ) : canViewDetails ? (
+                                <Link
+                                  to={`/skus/${s.id}`}
+                                  className="inline-flex items-center rounded-lg border border-red-200/80 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-red-300 hover:bg-red-50/70 hover:text-red-800"
+                                >
+                                  Details
+                                </Link>
                               ) : null}
                             </td>
                           </tr>
@@ -962,7 +976,7 @@ export function DashboardPage() {
                         <h3 className="mt-1.5 font-semibold text-slate-900 text-sm line-clamp-1">{s.fabricName}</h3>
 
                         <p className="mt-1 text-xs text-slate-500">
-                          {s.fabricType} · {s.colour}
+                          {s.fabricType} · {s.variant}
                           {s.pattern ? ` · ${s.pattern}` : ""}
                         </p>
 

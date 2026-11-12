@@ -4,15 +4,19 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { apiStock, apiSkus } from "@/lib/api";
 import { formatDate, formatMetres, formatPrice } from "@/lib/format";
-import { EmptyState, PageHeader } from "@/components/ui";
+import { AccessDenied, EmptyState, PageHeader } from "@/components/ui";
 import { Pagination, VoidedBadge, QualityBadge } from "@/components/bits";
 import { TableSkeleton } from "@/components/TableSkeleton";
 import { VoidButton } from "@/components/VoidButton";
 
 export function PurchasesPage() {
-  const { user } = useAuth();
-  const isOwner = user?.role === "OWNER";
-  const canReview = isOwner || user?.role === "MANAGER";
+  const { can, defaultRoute } = useAuth();
+  const hasAccess = can("modules.purchases") && can("purchases.view");
+  const canCreatePurchase = can("purchases.create");
+  const canViewCostPrice = can("purchases.viewCostPrice");
+  const canReview = can("purchases.reviewQuality");
+  const canVoid = can("purchases.void");
+  const canViewSkuDetails = can("inventory.viewDetails");
 
   const [skus, setSkus] = useState<any[]>([]);
   const [filters, setFilters] = useState({ sku: "", supplier: "", quality: "", from: "", to: "" });
@@ -26,10 +30,12 @@ export function PurchasesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!hasAccess) return;
     apiSkus.list().then(setSkus).catch(console.error);
-  }, []);
+  }, [hasAccess]);
 
   const loadPurchases = (p = page, f = filters) => {
+    if (!hasAccess) return;
     setLoading(true);
     apiStock
       .getPurchases({
@@ -47,7 +53,11 @@ export function PurchasesPage() {
 
   useEffect(() => {
     loadPurchases(page, filters);
-  }, [page]);
+  }, [page, hasAccess]);
+
+  if (!hasAccess) {
+    return <AccessDenied fallbackTo={defaultRoute} />;
+  }
 
   const handleFilterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +93,7 @@ export function PurchasesPage() {
       <PageHeader
         title="Purchase log"
         actions={
-          !isOwner ? (
+          canCreatePurchase ? (
             <Link to="/stock-in/new" className="btn-primary">
               Record stock in
             </Link>
@@ -103,7 +113,7 @@ export function PurchasesPage() {
             <option value="">All SKUs</option>
             {skus.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.code} - {s.fabricName} ({s.colour})
+                {s.code} - {s.fabricName} ({s.variant})
               </option>
             ))}
           </select>
@@ -168,7 +178,7 @@ export function PurchasesPage() {
       </form>
 
       {loading && data.rows.length === 0 ? (
-        <TableSkeleton cols={7} />
+        <TableSkeleton cols={5 + (canViewCostPrice ? 1 : 0) + (canVoid ? 1 : 0)} />
       ) : data.rows.length === 0 ? (
         <EmptyState
           title={filtered ? "No purchases match your filters" : "No purchases recorded yet"}
@@ -184,9 +194,9 @@ export function PurchasesPage() {
                   <th className="th">SKU</th>
                   <th className="th">Supplier</th>
                   <th className="th text-right">Metres</th>
-                  <th className="th text-right">Cost / m</th>
+                  {canViewCostPrice && <th className="th text-right">Cost / m</th>}
                   <th className="th">Quality status</th>
-                  <th className="th"><span className="sr-only">Actions</span></th>
+                  {canVoid && <th className="th"><span className="sr-only">Actions</span></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -199,13 +209,21 @@ export function PurchasesPage() {
                     >
                       <td className="td">{formatDate(r.purchaseDate)}</td>
                       <td className="td font-mono font-semibold">
-                        <Link to={`/skus/${r.skuId}`} className="hover:underline">
-                          {r.sku?.code ?? "—"}
-                        </Link>
+                        {canViewSkuDetails ? (
+                          <Link to={`/skus/${r.skuId}`} className="hover:underline">
+                            {r.sku?.code ?? "—"}
+                          </Link>
+                        ) : (
+                          <span>{r.sku?.code ?? "—"}</span>
+                        )}
                       </td>
                       <td className="td">{r.supplierName}</td>
                       <td className="td text-right font-mono font-medium">{formatMetres(r.quantityMetres)}</td>
-                      <td className="td text-right">{formatPrice(r.costPricePerMetre)}</td>
+                      {canViewCostPrice && (
+                        <td className="td text-right">
+                          {r.costPricePerMetre !== undefined ? formatPrice(r.costPricePerMetre) : "—"}
+                        </td>
+                      )}
                       <td className="td">
                         {r.voidedAt ? (
                           <QualityBadge status={r.qualityStatus} />
@@ -230,18 +248,20 @@ export function PurchasesPage() {
                           <QualityBadge status={r.qualityStatus} />
                         )}
                       </td>
-                      <td className="td text-right">
-                        {r.voidedAt ? (
-                          <VoidedBadge />
-                        ) : (
-                          <VoidButton
-                            id={r.id}
-                            kind="stockin"
-                            label={`${r.sku?.code ?? "Purchase"}, ${formatMetres(r.quantityMetres)}`}
-                            onSuccess={() => loadPurchases()}
-                          />
-                        )}
-                      </td>
+                      {canVoid && (
+                        <td className="td text-right">
+                          {r.voidedAt ? (
+                            <VoidedBadge />
+                          ) : (
+                            <VoidButton
+                              id={r.id}
+                              kind="stockin"
+                              label={`${r.sku?.code ?? "Purchase"}, ${formatMetres(r.quantityMetres)}`}
+                              onSuccess={() => loadPurchases()}
+                            />
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -258,14 +278,23 @@ export function PurchasesPage() {
                   className={`card hover:shadow-md hover:-translate-y-0.5 ${r.voidedAt ? "opacity-60" : ""}`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <Link to={`/skus/${r.skuId}`} className="break-all font-mono font-bold text-red-700">
-                      {r.sku?.code ?? "—"}
-                    </Link>
+                    {canViewSkuDetails ? (
+                      <Link to={`/skus/${r.skuId}`} className="break-all font-mono font-bold text-red-700">
+                        {r.sku?.code ?? "—"}
+                      </Link>
+                    ) : (
+                      <span className="break-all font-mono font-bold text-slate-900">
+                        {r.sku?.code ?? "—"}
+                      </span>
+                    )}
                     <span className="shrink-0 text-sm text-slate-600">{formatDate(r.purchaseDate)}</span>
                   </div>
                   <p className="mt-1 break-words text-sm font-medium">{r.supplierName}</p>
                   <p className="mt-1 text-sm font-mono text-slate-700">
-                    {formatMetres(r.quantityMetres)} - {formatPrice(r.costPricePerMetre)}/m
+                    {formatMetres(r.quantityMetres)}
+                    {canViewCostPrice && r.costPricePerMetre !== undefined
+                      ? ` - ${formatPrice(r.costPricePerMetre)}/m`
+                      : ""}
                   </p>
 
                   <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-xs">
@@ -294,14 +323,14 @@ export function PurchasesPage() {
                   <div className="mt-3">
                     {r.voidedAt ? (
                       <VoidedBadge />
-                    ) : (
+                    ) : canVoid ? (
                       <VoidButton
                         id={r.id}
                         kind="stockin"
                         label={`${r.sku?.code ?? "Purchase"}, ${formatMetres(r.quantityMetres)}`}
                         onSuccess={() => loadPurchases()}
                       />
-                    )}
+                    ) : null}
                   </div>
                 </li>
               );

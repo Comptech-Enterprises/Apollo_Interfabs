@@ -17,6 +17,8 @@ import { PurchaseOrdersPage } from "./pages/PurchaseOrdersPage";
 import { NewPOPage } from "./pages/NewPOPage";
 import { UsersPage } from "./pages/UsersPage";
 import { AccountPage } from "./pages/AccountPage";
+import { FabricTypesPage } from "./pages/FabricTypesPage";
+import { AccessManagementPage } from "./pages/AccessManagementPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 
 export default function App() {
@@ -38,7 +40,9 @@ export default function App() {
             <Route path="/stock-in/new" element={<NewStockInPage />} />
             <Route path="/po" element={<PurchaseOrdersPage />} />
             <Route path="/po/new" element={<NewPOPage />} />
+            <Route path="/fabric-types" element={<FabricTypesPage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/access-management" element={<AccessManagementPage />} />
             <Route path="/account" element={<AccountPage />} />
           </Route>
           <Route path="/404" element={<NotFoundPage />} />

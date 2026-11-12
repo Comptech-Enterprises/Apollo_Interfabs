@@ -19,7 +19,7 @@ const defaultOptions = {
   },
 };
 
-export type Role = "OWNER" | "MANAGER" | "SALES";
+export type Role = "SUPER_ADMIN" | "OWNER" | "MANAGER" | "SALES";
 
 // ==========================================
 // User
@@ -45,7 +45,7 @@ const userSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     username: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
-    role: { type: String, enum: ["OWNER", "MANAGER", "SALES"], required: true },
+    role: { type: String, enum: ["SUPER_ADMIN", "OWNER", "MANAGER", "SALES"], required: true },
     warehouses: { type: [String], default: [] },
     active: { type: Boolean, default: true },
     mustChangePassword: { type: Boolean, default: true },
@@ -57,14 +57,39 @@ const userSchema = new Schema<IUser>(
 export const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>("User", userSchema, "User");
 
 // ==========================================
+// FabricType
+// ==========================================
+export interface IFabricType {
+  _id: Types.ObjectId;
+  name: string;
+  active: boolean;
+  createdAt: Date;
+}
+
+export type FabricTypeDocument = Document<Types.ObjectId, {}, IFabricType> & IFabricType & { id: string };
+
+const fabricTypeSchema = new Schema<IFabricType>(
+  {
+    name: { type: String, required: true, unique: true, trim: true },
+    active: { type: Boolean, default: true },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { ...defaultOptions, collection: "FabricType" }
+);
+
+export const FabricType: Model<IFabricType> =
+  mongoose.models.FabricType || mongoose.model<IFabricType>("FabricType", fabricTypeSchema, "FabricType");
+
+// ==========================================
 // Sku
 // ==========================================
 export interface ISku {
   _id: Types.ObjectId;
   code: string;
+  itemCode: string;
   fabricName: string;
   fabricType: string;
-  colour: string;
+  variant: string;
   pattern?: string | null;
   otherIdentifiers?: string | null;
   sizeInch?: number | null;
@@ -85,9 +110,10 @@ export type SkuDocument = Document<Types.ObjectId, {}, ISku> & ISku & { id: stri
 const skuSchema = new Schema<ISku>(
   {
     code: { type: String, required: true, unique: true, uppercase: true, trim: true },
+    itemCode: { type: String, required: true, trim: true },
     fabricName: { type: String, required: true, trim: true },
     fabricType: { type: String, required: true, trim: true },
-    colour: { type: String, required: true, trim: true },
+    variant: { type: String, required: true, trim: true },
     pattern: { type: String, default: null, trim: true },
     otherIdentifiers: { type: String, default: null, trim: true },
     sizeInch: { type: Number, default: null },
@@ -103,7 +129,8 @@ const skuSchema = new Schema<ISku>(
   { ...defaultOptions, timestamps: true, collection: "Sku" }
 );
 
-skuSchema.index({ fabricType: 1, colour: 1 });
+skuSchema.index({ fabricType: 1, variant: 1 });
+skuSchema.index({ itemCode: 1 });
 
 skuSchema.virtual("stockIns", {
   ref: "StockIn",
@@ -369,3 +396,30 @@ const auditLogSchema = new Schema<IAuditLog>(
 
 export const AuditLog: Model<IAuditLog> =
   mongoose.models.AuditLog || mongoose.model<IAuditLog>("AuditLog", auditLogSchema, "AuditLog");
+
+// ==========================================
+// AccessControl
+// ==========================================
+export interface IAccessControl {
+  _id: Types.ObjectId;
+  role: Role;
+  permissions: Record<string, boolean>;
+  updatedById?: Types.ObjectId | null;
+  updatedAt: Date;
+}
+
+export type AccessControlDocument = Document<Types.ObjectId, {}, IAccessControl> & IAccessControl & { id: string };
+
+const accessControlSchema = new Schema<IAccessControl>(
+  {
+    role: { type: String, enum: ["SUPER_ADMIN", "OWNER", "MANAGER", "SALES"], required: true, unique: true },
+    permissions: { type: Schema.Types.Mixed, default: {} },
+    updatedById: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    updatedAt: { type: Date, default: Date.now },
+  },
+  { ...defaultOptions, collection: "AccessControl" }
+);
+
+export const AccessControl: Model<IAccessControl> =
+  mongoose.models.AccessControl ||
+  mongoose.model<IAccessControl>("AccessControl", accessControlSchema, "AccessControl");

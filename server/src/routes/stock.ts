@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { Sku, StockIn, Sale, AuditLog, Notification, User, withTransaction } from "../db.js";
-import { requireAuth, requireRole, type AuthenticatedRequest } from "../middleware/auth.js";
+import { Sku, StockIn, Sale, AuditLog, Notification, User, FabricType, withTransaction } from "../db.js";
+import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
+import { hasPermission, requirePermission } from "../access-control.js";
 import { stockInSchema, saleSchema, voidSchema, updateQualitySchema, zodMessage } from "../validation.js";
 
 const router = Router();
@@ -18,7 +19,17 @@ function formatMetres(v: unknown): string {
   return `${Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`;
 }
 
-router.post("/stock-in", requireRole("MANAGER"), async (req, res) => {
+router.get("/check-item-code", requirePermission("purchases.create"), async (req, res) => {
+  const code = String(req.query.code ?? "").trim();
+  if (!code) {
+    res.json({ available: false, message: "Code is empty." });
+    return;
+  }
+  const exists = await Sku.findOne({ itemCode: { $regex: new RegExp(`^${escapeRegex(code)}$`, "i") } });
+  res.json({ available: !exists, message: exists ? "Item code already in use." : "Available." });
+});
+
+router.post("/stock-in", requirePermission("purchases.create"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const p = stockInSchema.safeParse(req.body);
   if (!p.success) {
@@ -29,29 +40,36 @@ router.post("/stock-in", requireRole("MANAGER"), async (req, res) => {
 
   try {
     const result = await withTransaction(async (session) => {
-      const itemNameNorm = d.itemName.trim();
-      const colourNorm = (d.colour || "Natural").trim();
+      const itemCodeNorm = d.itemCode.trim().toUpperCase();
+      const variantNorm = d.variant.trim();
 
-      const code = itemNameNorm
-        .toUpperCase()
-        .replace(/[^A-Z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "")
-        + "-"
-        + colourNorm.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-      let uniqueCode = code;
-      let suffix = 2;
-      while (await Sku.findOne({ code: uniqueCode }).session(session || null)) {
-        uniqueCode = `${code}-${suffix++}`;
+      const existingCode = await Sku.findOne({ itemCode: { $regex: new RegExp(`^${escapeRegex(itemCodeNorm)}$`, "i") } }).session(session || null);
+      if (existingCode) {
+        throw new Error(`Item code "${itemCodeNorm}" is already in use.`);
       }
+
+      const inchStr = d.quantityInches > 0 ? String(d.quantityInches) : "0";
+      const metreStr = String(d.quantityMetres);
+      const variantCode = variantNorm.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      const skuCode = `${itemCodeNorm}-${variantCode}-${inchStr}-${metreStr}`;
+
+      await FabricType.updateOne(
+        { name: { $regex: new RegExp(`^${escapeRegex(d.fabricType.trim())}$`, "i") } },
+        { $setOnInsert: { name: d.fabricType.trim(), active: true } },
+        { upsert: true, session: session || undefined }
+      );
 
       const created = await Sku.create(
         [
           {
-            code: uniqueCode,
-            fabricName: itemNameNorm,
-            fabricType: itemNameNorm,
-            colour: colourNorm,
-            warehouse: "Warehouse 1",
+            code: skuCode,
+            itemCode: itemCodeNorm,
+            fabricName: d.fabricType.trim(),
+            fabricType: d.fabricType.trim(),
+            variant: variantNorm,
+            sizeInch: d.quantityInches,
+            sizeMtr: d.quantityMetres,
+            warehouse: d.warehouse,
             sellingPricePerMetre: 0,
             lowStockThreshold: 0,
             currentStock: 0,
@@ -67,7 +85,7 @@ router.post("/stock-in", requireRole("MANAGER"), async (req, res) => {
         [
           {
             skuId: sku._id,
-            supplierName: d.supplierName,
+            supplierName: d.supplierName.trim(),
             quantityMetres: d.quantityMetres,
             purchaseDate: toDateOnly(d.purchaseDate),
             costPricePerMetre: d.costPricePerMetre,
@@ -87,7 +105,7 @@ router.post("/stock-in", requireRole("MANAGER"), async (req, res) => {
       return { sku: updated! };
     });
 
-    const owners = await User.find({ role: "OWNER", active: true }).select("_id");
+    const owners = await User.find({ role: { $in: ["OWNER", "SUPER_ADMIN"] }, active: true }).select("_id");
     if (owners.length > 0) {
       await Notification.insertMany(
         owners.map((o) => ({
@@ -111,7 +129,7 @@ router.post("/stock-in", requireRole("MANAGER"), async (req, res) => {
   }
 });
 
-router.post("/sale", requireRole("SALES"), async (req, res) => {
+router.post("/sale", requirePermission("sales.create"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const p = saleSchema.safeParse(req.body);
   if (!p.success) {
@@ -156,7 +174,7 @@ router.post("/sale", requireRole("SALES"), async (req, res) => {
       return upd;
     });
 
-    const owners = await User.find({ role: "OWNER", active: true }).select("_id");
+    const owners = await User.find({ role: { $in: ["OWNER", "SUPER_ADMIN"] }, active: true }).select("_id");
     if (owners.length > 0) {
       await Notification.insertMany(
         owners.map((o) => ({
@@ -180,7 +198,7 @@ router.post("/sale", requireRole("SALES"), async (req, res) => {
   }
 });
 
-router.post("/void-sale", requireRole("OWNER"), async (req, res) => {
+router.post("/void-sale", requirePermission("sales.void"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const p = voidSchema.safeParse(req.body);
   if (!p.success) {
@@ -229,7 +247,7 @@ router.post("/void-sale", requireRole("OWNER"), async (req, res) => {
   }
 });
 
-router.patch("/stockin/:id/quality", requireRole("OWNER", "MANAGER"), async (req, res) => {
+router.patch("/stockin/:id/quality", requirePermission("purchases.reviewQuality"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const p = updateQualitySchema.safeParse(req.body);
   if (!p.success) {
@@ -273,7 +291,7 @@ router.patch("/stockin/:id/quality", requireRole("OWNER", "MANAGER"), async (req
   }
 });
 
-router.post("/void-stockin", requireRole("OWNER", "MANAGER"), async (req, res) => {
+router.post("/void-stockin", requirePermission("purchases.void"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const p = voidSchema.safeParse(req.body);
   if (!p.success) {
@@ -323,14 +341,14 @@ router.post("/void-stockin", requireRole("OWNER", "MANAGER"), async (req, res) =
   }
 });
 
-router.get("/sales", requireRole("OWNER", "SALES"), async (req, res) => {
+router.get("/sales", requirePermission("sales.view"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const { sku, buyer, from, to } = req.query;
   const page = Math.max(1, Number(req.query.page) || 1);
   const PAGE = 25;
   const filter: Record<string, any> = { voidedAt: null };
 
-  if (me.role === "SALES") {
+  if (!(await hasPermission(me.role, "sales.viewAllUsers"))) {
     filter.createdById = me.uid;
   }
 
@@ -354,8 +372,9 @@ router.get("/sales", requireRole("OWNER", "SALES"), async (req, res) => {
   res.json({ rows, count, page, pages: Math.ceil(count / PAGE) });
 });
 
-router.get("/purchases", requireRole("OWNER", "MANAGER"), async (req, res) => {
+router.get("/purchases", requirePermission("purchases.view"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
+  const canViewCost = await hasPermission(me.role, "purchases.viewCostPrice");
   const { sku, supplier, quality, from, to } = req.query;
   const page = Math.max(1, Number(req.query.page) || 1);
   const PAGE = 25;
@@ -392,7 +411,15 @@ router.get("/purchases", requireRole("OWNER", "MANAGER"), async (req, res) => {
     StockIn.countDocuments(filter),
   ]);
 
-  res.json({ rows, count, page, pages: Math.ceil(count / PAGE) });
+  const sanitizedRows = canViewCost
+    ? rows
+    : rows.map((r) => {
+        const obj = r.toJSON() as Record<string, any>;
+        delete obj.costPricePerMetre;
+        return obj;
+      });
+
+  res.json({ rows: sanitizedRows, count, page, pages: Math.ceil(count / PAGE) });
 });
 
 export default router;

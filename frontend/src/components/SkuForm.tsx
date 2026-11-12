@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 import { apiSkus } from "@/lib/api";
 import { Field, SubmitButton } from "@/components/ui";
 import { suggestSkuCode } from "@/lib/sku-code";
@@ -11,8 +12,8 @@ export type SkuFormValues = {
   code: string;
   fabricName: string;
   fabricType: string;
-  colour: string;
-  pattern: string;
+  variant: string;
+
   otherIdentifiers: string;
   warehouse: string;
   sellingPricePerMetre: string;
@@ -23,8 +24,8 @@ export const emptySku: SkuFormValues = {
   code: "",
   fabricName: "",
   fabricType: "",
-  colour: "",
-  pattern: "",
+  variant: "",
+
   otherIdentifiers: "",
   warehouse: "Warehouse 1",
   sellingPricePerMetre: "",
@@ -44,6 +45,8 @@ export function SkuForm({
   role?: string;
   onSuccess?: () => void;
 }) {
+  const { can } = useAuth();
+  const canEditPrice = can("inventory.editSellingPrice");
   const visibleWarehouses =
     allowedWarehouses.length > 0
       ? WAREHOUSES.filter((w) => allowedWarehouses.includes(w))
@@ -58,8 +61,8 @@ export function SkuForm({
     (k: keyof SkuFormValues) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       const next = { ...v, [k]: e.target.value };
-      if (!codeTouched && (k === "colour" || k === "fabricType")) {
-        const suggested = suggestSkuCode(next.colour, next.fabricType);
+      if (!codeTouched && (k === "variant" || k === "fabricType")) {
+        const suggested = suggestSkuCode(next.variant, next.fabricType);
         if (suggested) {
           next.code = suggested;
         }
@@ -80,12 +83,12 @@ export function SkuForm({
   };
 
   const handleRegenerate = () => {
-    let suggested = suggestSkuCode(v.colour, v.fabricType);
+    let suggested = suggestSkuCode(v.variant, v.fabricType);
     if (!suggested) {
-      if (v.fabricName && !v.colour && !v.fabricType) {
+      if (v.fabricName && !v.variant && !v.fabricType) {
         suggested = suggestSkuCode(v.fabricName.slice(0, 4), "FAB", new Date(), true);
       } else {
-        suggested = suggestSkuCode(v.colour, v.fabricType, new Date(), true);
+        suggested = suggestSkuCode(v.variant, v.fabricType, new Date(), true);
       }
     }
     setV((s) => ({ ...s, code: suggested }));
@@ -105,8 +108,8 @@ export function SkuForm({
       code: v.code.trim().toUpperCase(),
       fabricName: v.fabricName.trim(),
       fabricType: v.fabricType.trim(),
-      colour: v.colour.trim(),
-      pattern: v.pattern.trim() || undefined,
+      variant: v.variant.trim(),
+
       otherIdentifiers: v.otherIdentifiers.trim() || undefined,
       warehouse: v.warehouse,
       sellingPricePerMetre: Number(v.sellingPricePerMetre) || 0,
@@ -119,11 +122,11 @@ export function SkuForm({
         toast.success(res.message);
         setV(emptySku);
         setCodeTouched(false);
-        navigate("/skus");
+        navigate(can("modules.skus") ? "/skus" : "/dashboard");
       } else if (initial.id) {
         const res = await apiSkus.update(initial.id, payload);
         toast.success(res.message);
-        navigate(`/skus/${initial.id}`);
+        navigate(can("inventory.viewDetails") ? `/skus/${initial.id}` : "/dashboard");
       }
       onSuccess?.();
     } catch (err: any) {
@@ -169,61 +172,57 @@ export function SkuForm({
         </Field>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Colour" name="colour" error={errors.colour}>
-          <input
-            id="colour"
-            name="colour"
-            value={v.colour}
-            onChange={setField("colour")}
-            required
-            maxLength={50}
-            placeholder="e.g. Navy Blue"
-            className="input"
-            autoComplete="off"
-          />
-        </Field>
-        <Field label="Pattern" name="pattern" error={errors.pattern} hint="e.g. Plain, Striped (optional)">
-          <input
-            id="pattern"
-            name="pattern"
-            value={v.pattern}
-            onChange={setField("pattern")}
-            maxLength={50}
-            placeholder="e.g. Plain, Checked"
-            className="input"
-            autoComplete="off"
-          />
-        </Field>
-      </div>
+      <Field label="Variant" name="variant" error={errors.variant}>
+        <input
+          id="variant"
+          name="variant"
+          value={v.variant}
+          onChange={setField("variant")}
+          required
+          maxLength={50}
+          placeholder="e.g. Navy Blue"
+          className="input"
+          autoComplete="off"
+        />
+      </Field>
 
       <Field
         label="SKU code"
         name="code"
         error={errors.code}
-        hint="Suggested from colour, type and month (e.g. BLK-POLY-JUN26). You can edit it."
+        hint={mode === "edit" ? undefined : "Suggested from variant, type and month (e.g. BLK-POLY-JUN26). You can edit it."}
       >
-        <div className="flex gap-2">
+        {mode === "edit" ? (
           <input
             id="code"
             name="code"
             value={v.code}
-            onChange={handleCodeChange}
-            required
-            maxLength={40}
-            autoCapitalize="characters"
-            placeholder="e.g. BLK-POLY-JUN26"
-            className="input font-mono flex-1"
-            autoComplete="off"
+            disabled
+            className="input font-mono bg-slate-100 text-slate-500 cursor-not-allowed"
           />
-          <button
-            type="button"
-            className="btn-secondary shrink-0 text-xs cursor-pointer"
-            onClick={handleRegenerate}
-          >
-            Re-generate
-          </button>
-        </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              id="code"
+              name="code"
+              value={v.code}
+              onChange={handleCodeChange}
+              required
+              maxLength={40}
+              autoCapitalize="characters"
+              placeholder="e.g. BLK-POLY-JUN26"
+              className="input font-mono flex-1"
+              autoComplete="off"
+            />
+            <button
+              type="button"
+              className="btn-secondary shrink-0 text-xs cursor-pointer"
+              onClick={handleRegenerate}
+            >
+              Re-generate
+            </button>
+          </div>
+        )}
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -256,7 +255,7 @@ export function SkuForm({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {role === "OWNER" && (
+        {canEditPrice && (
           <Field
             label="Selling price per metre (₹)"
             name="sellingPricePerMetre"

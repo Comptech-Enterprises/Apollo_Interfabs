@@ -1,10 +1,13 @@
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 import { apiPo } from "@/lib/api";
-import { Field, PageHeader, SubmitButton } from "@/components/ui";
+import { AccessDenied, Field, PageHeader, SubmitButton } from "@/components/ui";
 
 export function NewPOPage() {
+  const { can, defaultRoute } = useAuth();
+  const canCreatePo = can("po.create");
   const [searchParams] = useSearchParams();
   const [itemName, setItemName] = useState(searchParams.get("item") ?? "");
   const [quantity, setQuantity] = useState("");
@@ -13,6 +16,10 @@ export function NewPOPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
+
+  if (!canCreatePo) {
+    return <AccessDenied fallbackTo={defaultRoute} />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +47,7 @@ export function NewPOPage() {
         description: description.trim() || undefined,
       });
       toast.success(res.message);
-      navigate("/po");
+      navigate(can("modules.po") && can("po.view") ? "/po" : defaultRoute);
     } catch (err: any) {
       if (err.fields) setErrors(err.fields);
       toast.error(err.message || "Failed to submit PO");

@@ -1,20 +1,23 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { User, AuditLog } from "../db.js";
-import { requireAuth, requireRole, type AuthenticatedRequest } from "../middleware/auth.js";
+import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
+import { requirePermission } from "../access-control.js";
 import { userSchema, zodMessage } from "../validation.js";
 
 const router = Router();
-router.use(requireAuth, requireRole("OWNER"));
+router.use(requireAuth);
 
-router.get("/", async (_req, res) => {
-  const users = await User.find()
+router.get("/", requirePermission("users.view"), async (req, res) => {
+  const me = (req as unknown as AuthenticatedRequest).user;
+  const filter = me.role === "SUPER_ADMIN" ? {} : { role: { $ne: "SUPER_ADMIN" as const } };
+  const users = await User.find(filter)
     .select("id name username email role active warehouses createdAt")
     .sort({ name: 1 });
   res.json(users);
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requirePermission("users.create"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const p = userSchema.safeParse(req.body);
   if (!p.success) {
@@ -60,7 +63,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.post("/:id/reset-password", async (req, res) => {
+router.post("/:id/reset-password", requirePermission("users.resetPassword"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const { password } = req.body;
   if (!password || String(password).length < 8) {
@@ -69,6 +72,15 @@ router.post("/:id/reset-password", async (req, res) => {
   }
 
   const userId = String(req.params.id);
+  const target = await User.findById(userId);
+  if (!target) {
+    res.status(404).json({ ok: false, message: "User not found." });
+    return;
+  }
+  if (target.role === "SUPER_ADMIN" && me.role !== "SUPER_ADMIN") {
+    res.status(403).json({ ok: false, message: "Forbidden." });
+    return;
+  }
   await User.findByIdAndUpdate(userId, {
     $set: {
       passwordHash: await bcrypt.hash(String(password), 12),
@@ -84,7 +96,7 @@ router.post("/:id/reset-password", async (req, res) => {
   res.json({ ok: true, message: "Password reset." });
 });
 
-router.patch("/:id/active", async (req, res) => {
+router.patch("/:id/active", requirePermission("users.toggleActive"), async (req, res) => {
   const me = (req as unknown as AuthenticatedRequest).user;
   const active = Boolean(req.body.active);
   const userId = String(req.params.id);
@@ -94,9 +106,25 @@ router.patch("/:id/active", async (req, res) => {
     return;
   }
 
+  const target = await User.findById(userId);
+  if (!target) {
+    res.status(404).json({ ok: false, message: "User not found." });
+    return;
+  }
+  if (target.role === "SUPER_ADMIN" && me.role !== "SUPER_ADMIN") {
+    res.status(403).json({ ok: false, message: "Forbidden." });
+    return;
+  }
+
   if (!active) {
-    const u = await User.findById(userId);
-    if (u?.role === "OWNER") {
+    if (target.role === "SUPER_ADMIN") {
+      const others = await User.countDocuments({ role: "SUPER_ADMIN", active: true, _id: { $ne: userId } });
+      if (others === 0) {
+        res.status(400).json({ ok: false, message: "At least one active super admin is required." });
+        return;
+      }
+    }
+    if (target.role === "OWNER") {
       const others = await User.countDocuments({ role: "OWNER", active: true, _id: { $ne: userId } });
       if (others === 0) {
         res.status(400).json({ ok: false, message: "At least one active owner is required." });

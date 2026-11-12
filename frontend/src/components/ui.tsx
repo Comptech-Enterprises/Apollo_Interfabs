@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 export function SubmitButton({
   children,
@@ -98,6 +99,36 @@ export function EmptyState({
       <p className="text-base font-semibold text-slate-800">{title}</p>
       {body && <p className="mt-1 text-sm text-slate-600">{body}</p>}
       {children && <div className="mt-4 flex justify-center">{children}</div>}
+    </div>
+  );
+}
+
+export function AccessDenied({
+  title = "Access disabled",
+  body = "This module or action is currently disabled for your role. Contact the Owner if you need access.",
+  fallbackTo = "/account",
+}: {
+  title?: string;
+  body?: string;
+  fallbackTo?: string;
+}) {
+  return (
+    <div className="mx-auto max-w-lg py-10">
+      <div className="card animate-page-enter border-red-200 bg-white text-center py-8 px-6">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </div>
+        <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+        <p className="mt-1.5 text-sm text-slate-600">{body}</p>
+        <div className="mt-5 flex justify-center">
+          <Link to={fallbackTo} className="btn-secondary text-xs">
+            Go to allowed page
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,13 +1,16 @@
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
-import { connectDB } from "./db.js";
+import bcrypt from "bcryptjs";
+import { connectDB, User } from "./db.js";
 import authRoutes from "./routes/auth.js";
 import skuRoutes from "./routes/skus.js";
 import stockRoutes from "./routes/stock.js";
 import poRoutes from "./routes/purchase-orders.js";
 import notificationRoutes from "./routes/notifications.js";
 import userRoutes from "./routes/users.js";
+import fabricTypeRoutes from "./routes/fabric-types.js";
+import accessControlRoutes from "./routes/access-control.js";
 
 const app = express();
 const PORT = Number(process.env.API_PORT) || 4000;
@@ -39,11 +42,31 @@ app.use(
 
 app.use(express.json());
 
+let superAdminEnsured = false;
+async function ensureSuperAdmin() {
+  if (superAdminEnsured) return;
+  const existing = await User.findOne({ $or: [{ role: "SUPER_ADMIN" }, { username: "superadmin" }] }).select("_id");
+  if (!existing) {
+    await User.create({
+      name: "Super Admin",
+      username: "superadmin",
+      email: "superadmin@apollo.local",
+      role: "SUPER_ADMIN",
+      passwordHash: await bcrypt.hash("superadmin@123", 12),
+      active: true,
+      mustChangePassword: false,
+      warehouses: [],
+    });
+  }
+  superAdminEnsured = true;
+}
+
 // Auto-connect database on cold starts (useful for serverless environments like Vercel)
 app.use(async (_req, _res, next) => {
   try {
     if (process.env.DATABASE_URL) {
       await connectDB();
+      await ensureSuperAdmin();
     }
   } catch (err) {
     console.error("Database connection error in middleware:", err);
@@ -58,6 +81,8 @@ app.use("/api/stock", stockRoutes);
 app.use("/api/po", poRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/fabric-types", fabricTypeRoutes);
+app.use("/api/access-control", accessControlRoutes);
 
 // Helper function to build API status metadata
 function getApiStatus() {
@@ -496,6 +521,7 @@ if (!process.env.VERCEL) {
     try {
       if (process.env.DATABASE_URL) {
         await connectDB();
+        await ensureSuperAdmin();
         console.log("Connected to MongoDB via Mongoose.");
       } else {
         console.warn("DATABASE_URL is not set. Database not connected yet.");

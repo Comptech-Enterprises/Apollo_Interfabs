@@ -44,9 +44,9 @@ const abbr = (s: string, map: Record<string, string>) => {
   return k.replace(/[^a-z0-9]/g, "").slice(0, 4).toUpperCase();
 };
 
-/** Suggest a SKU code like BLK-POLY-JUN26 from colour, type and a date. */
-export function suggestSkuCode(colour: string, fabricType: string, date = new Date(), fallback = false): string {
-  const c = abbr(colour, COLOUR);
+/** Suggest a SKU code like BLK-POLY-JUN26 from variant, type and a date. */
+export function suggestSkuCode(variant: string, fabricType: string, date = new Date(), fallback = false): string {
+  const c = abbr(variant, COLOUR);
   const t = abbr(fabricType, ABBR);
   if (!fallback && (!c || !t)) return "";
 
