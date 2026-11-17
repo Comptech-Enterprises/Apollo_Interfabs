@@ -143,7 +143,6 @@ router.post("/sale", requirePermission("sales.create"), async (req, res) => {
       const sku = await Sku.findById(d.skuId).session(session || null);
       if (!sku) throw new Error("SKU not found.");
       if (!sku.active) throw new Error("This SKU is inactive and cannot be sold.");
-      if (!sku.sellingPricePerMetre || sku.sellingPricePerMetre <= 0) throw new Error("Selling price not set for this SKU. Ask an owner to set the price first.");
 
       const upd = await Sku.findOneAndUpdate(
         { _id: d.skuId, active: true, currentStock: { $gte: d.quantityMetres } },

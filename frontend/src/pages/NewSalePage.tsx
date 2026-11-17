@@ -38,10 +38,10 @@ export function NewSalePage() {
     apiSkus
       .list()
       .then((data) => {
-        const priced = data.filter((s: any) => s.active && (s.isPriced ?? Number(s.sellingPricePerMetre) > 0));
-        setSkus(priced);
+        const active = data.filter((s: any) => s.active);
+        setSkus(active);
         if (initialSkuParam) {
-          const found = priced.find((s: any) => s.id === initialSkuParam);
+          const found = active.find((s: any) => s.id === initialSkuParam);
           if (found) {
             setSkuId(found.id);
             setFilter(found.code);
@@ -271,7 +271,7 @@ export function NewSalePage() {
                       </ul>
                     ) : (
                       <div className="px-4 py-3 text-sm text-slate-500">
-                        No priced SKUs match &ldquo;{filter}&rdquo;
+                        No SKUs match &ldquo;{filter}&rdquo;
                       </div>
                     )}
                   </div>

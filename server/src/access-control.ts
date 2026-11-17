@@ -453,7 +453,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, Record<PermissionKey, boolea
     "inventory.viewPriceHistory": false,
     "inventory.viewDetails": false,
     "inventory.viewInactive": false,
-    "inventory.viewUnpriced": false,
+    "inventory.viewUnpriced": true,
     "inventory.createSku": false,
     "inventory.editSku": false,
     "inventory.editSellingPrice": false,
