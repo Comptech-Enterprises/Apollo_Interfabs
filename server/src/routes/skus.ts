@@ -39,6 +39,21 @@ router.get(
       });
     }
 
+    if (req.query.type) {
+      filter.fabricType = String(req.query.type);
+    }
+    if (req.query.variant) {
+      filter.variant = String(req.query.variant);
+    }
+    if (req.query.pattern) {
+      filter.pattern = String(req.query.pattern);
+    }
+    if (req.query.status === "active") {
+      filter.active = true;
+    } else if (req.query.status === "inactive") {
+      filter.active = false;
+    }
+
     if (me.warehouses && me.warehouses.length > 0) {
       filter.warehouse = { $in: me.warehouses };
     }
@@ -50,12 +65,57 @@ router.get(
     }
 
     const canViewPrices = Boolean(perms["inventory.viewPrices"]);
-    const skus = await Sku.find(filter).sort({ code: 1 }).limit(500);
+    const hasPage = req.query.page !== undefined;
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 30));
+
+    const projection =
+      "_id code itemCode fabricName fabricType variant pattern otherIdentifiers warehouse currentStock lowStockThreshold active sellingPricePerMetre";
+
+    if (hasPage) {
+      const [skus, total] = await Promise.all([
+        Sku.find(filter)
+          .sort({ code: 1 })
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .select(projection)
+          .lean(),
+        Sku.countDocuments(filter),
+      ]);
+      return res.json({
+        items: skus.map((s) => ({
+          id: s._id.toString(),
+          code: s.code,
+          itemCode: s.itemCode || "",
+          fabricName: s.fabricName,
+          fabricType: s.fabricType,
+          variant: s.variant,
+          pattern: s.pattern,
+          otherIdentifiers: s.otherIdentifiers,
+          warehouse: s.warehouse,
+          currentStock: Number(s.currentStock),
+          lowStockThreshold: Number(s.lowStockThreshold),
+          active: s.active,
+          isPriced: Number(s.sellingPricePerMetre) > 0,
+          ...(canViewPrices ? { sellingPricePerMetre: Number(s.sellingPricePerMetre) } : {}),
+        })),
+        total,
+        page,
+        pages: Math.ceil(total / limit),
+        hasMore: page * limit < total,
+      });
+    }
+
+    const skus = await Sku.find(filter)
+      .sort({ code: 1 })
+      .select(projection)
+      .lean();
+
     res.json(
       skus.map((s) => ({
-        id: s.id || s._id.toString(),
+        id: s._id.toString(),
         code: s.code,
-        itemCode: (s as any).itemCode || "",
+        itemCode: s.itemCode || "",
         fabricName: s.fabricName,
         fabricType: s.fabricType,
         variant: s.variant,

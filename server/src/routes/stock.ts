@@ -362,13 +362,22 @@ router.get("/sales", requirePermission("sales.view"), async (req, res) => {
   const [rows, count] = await Promise.all([
     Sale.find(filter)
       .sort({ saleDate: -1, createdAt: -1 })
-      .populate({ path: "sku", select: "code" })
+      .populate({ path: "sku", select: "code fabricName fabricType variant pattern warehouse" })
       .skip((page - 1) * PAGE)
-      .limit(PAGE),
+      .limit(PAGE)
+      .lean(),
     Sale.countDocuments(filter),
   ]);
 
-  res.json({ rows, count, page, pages: Math.ceil(count / PAGE) });
+  res.json({
+    rows: rows.map((r: any) => ({
+      ...r,
+      id: r._id?.toString() || r.id,
+    })),
+    count,
+    page,
+    pages: Math.ceil(count / PAGE),
+  });
 });
 
 router.get("/purchases", requirePermission("purchases.view"), async (req, res) => {
@@ -406,14 +415,15 @@ router.get("/purchases", requirePermission("purchases.view"), async (req, res) =
       .sort({ purchaseDate: -1, createdAt: -1 })
       .populate({ path: "sku", select: "code warehouse fabricName" })
       .skip((page - 1) * PAGE)
-      .limit(PAGE),
+      .limit(PAGE)
+      .lean(),
     StockIn.countDocuments(filter),
   ]);
 
   const sanitizedRows = canViewCost
-    ? rows
-    : rows.map((r) => {
-        const obj = r.toJSON() as Record<string, any>;
+    ? rows.map((r: any) => ({ ...r, id: r._id?.toString() || r.id }))
+    : rows.map((r: any) => {
+        const obj = { ...r, id: r._id?.toString() || r.id };
         delete obj.costPricePerMetre;
         return obj;
       });

@@ -1,10 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { apiFabricTypes } from "@/lib/api";
 import { AccessDenied, PageHeader, SubmitButton } from "@/components/ui";
-
-const PAGE_SIZE = 10;
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import {
+  InfiniteScrollSentinel,
+  InfiniteScrollSpinner,
+  InfiniteScrollEnd,
+  BackToTopButton,
+} from "@/components/InfiniteScroll";
 
 export function FabricTypesPage() {
   const { can, defaultRoute } = useAuth();
@@ -18,7 +23,8 @@ export function FabricTypesPage() {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [page, setPage] = useState(1);
+  const CHUNK_SIZE = 20;
+  const [visibleCount, setVisibleCount] = useState(CHUNK_SIZE);
   const [search, setSearch] = useState("");
 
   const load = () => {
@@ -26,7 +32,10 @@ export function FabricTypesPage() {
     setLoading(true);
     apiFabricTypes
       .listAll()
-      .then(setTypes)
+      .then((data) => {
+        setTypes(data || []);
+        setVisibleCount(CHUNK_SIZE);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   };
@@ -39,12 +48,25 @@ export function FabricTypesPage() {
     return <AccessDenied fallbackTo={defaultRoute} />;
   }
 
-  const filtered = search
-    ? types.filter((ft) => ft.name.toLowerCase().includes(search.toLowerCase()))
-    : types;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const filtered = useMemo(() => {
+    return search
+      ? types.filter((ft) => ft.name.toLowerCase().includes(search.toLowerCase()))
+      : types;
+  }, [types, search]);
+
+  const paged = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const hasMore = visibleCount < filtered.length;
+
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount((prev) => Math.min(prev + CHUNK_SIZE, filtered.length));
+  }, [filtered.length]);
+
+  const { sentinelRef, showScrollTop, scrollToTop } = useInfiniteScroll({
+    hasMore,
+    isLoading: loading,
+    onLoadMore: handleLoadMore,
+    rootMargin: "300px",
+  });
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +127,7 @@ export function FabricTypesPage() {
 
         <input
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          onChange={(e) => { setSearch(e.target.value); setVisibleCount(CHUNK_SIZE); }}
           placeholder="Search fabric types..."
           className="input w-full sm:w-56"
           autoComplete="off"
@@ -136,7 +158,7 @@ export function FabricTypesPage() {
               paged.map((ft, i) => {
                 const id = ft.id || ft._id;
                 const isEditing = canEdit && editingId === id;
-                const rowNum = (safePage - 1) * PAGE_SIZE + i + 1;
+                const rowNum = i + 1;
                 return (
                   <tr key={id} className="transition-colors hover:bg-red-50/40">
                     <td className="td text-slate-400 text-xs w-10">{rowNum}</td>
@@ -188,30 +210,13 @@ export function FabricTypesPage() {
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
-          <span>{filtered.length} fabric type{filtered.length !== 1 ? "s" : ""}</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={safePage <= 1}
-              className="btn-secondary px-3 py-1.5 text-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <span className="text-xs text-slate-500">
-              Page {safePage} of {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={safePage >= totalPages}
-              className="btn-secondary px-3 py-1.5 text-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+      <InfiniteScrollSentinel innerRef={sentinelRef} />
+      {hasMore && <InfiniteScrollSpinner label="Loading more fabric types..." />}
+      {!hasMore && filtered.length > 0 && (
+        <InfiniteScrollEnd count={filtered.length} label="fabric types" onScrollTop={scrollToTop} />
       )}
+
+      <BackToTopButton visible={showScrollTop} onClick={scrollToTop} />
     </>
   );
 }

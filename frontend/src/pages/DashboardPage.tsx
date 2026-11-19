@@ -6,6 +6,13 @@ import { formatMetres, formatPrice, isLowStock, stockColor } from "@/lib/format"
 import { ActiveBadge, LowStockBadge, OutBadge } from "@/components/bits";
 import { AccessDenied } from "@/components/ui";
 import { TableSkeleton } from "@/components/TableSkeleton";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import {
+  InfiniteScrollSentinel,
+  InfiniteScrollSpinner,
+  InfiniteScrollEnd,
+  BackToTopButton,
+} from "@/components/InfiniteScroll";
 
 type Sku = {
   id: string;
@@ -59,16 +66,18 @@ export function DashboardPage() {
   const [highlightIndex, setHighlightIndex] = useState(-1);
 
   // Listing display state
+  const CHUNK_SIZE = 30;
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [sortBy, setSortBy] = useState<SortKey>("code-asc");
   const [stockTab, setStockTab] = useState<StockTab>("all");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(24);
+  const [visibleCount, setVisibleCount] = useState<number>(CHUNK_SIZE);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const listTopRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const skipNextSearchRef = useRef(false);
+  const activeAbortControllerRef = useRef<AbortController | null>(null);
+  const searchCacheRef = useRef<Map<string, Sku[]>>(new Map());
 
   useEffect(() => {
     if (!hasInventoryAccess) return;
@@ -78,10 +87,25 @@ export function DashboardPage() {
   const doSearch = useCallback(
     async (q: string, f: typeof filters, forceShow = false) => {
       if (!hasInventoryAccess) return;
+
+      if (activeAbortControllerRef.current) {
+        activeAbortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      activeAbortControllerRef.current = controller;
+
       setSearching(true);
       try {
-        const data = await apiSkus.list(q.trim());
-        const filtered = data.filter((s: Sku) => {
+        const cleanQuery = q.trim();
+        const cacheKey = cleanQuery.toLowerCase();
+        let data = searchCacheRef.current.get(cacheKey);
+
+        if (!data) {
+          data = await apiSkus.list(cleanQuery, { signal: controller.signal });
+          searchCacheRef.current.set(cacheKey, data || []);
+        }
+
+        const filtered = (data || []).filter((s: Sku) => {
           if (f.type && s.fabricType !== f.type) return false;
           if (f.variant && s.variant !== f.variant) return false;
           if (f.pattern && s.pattern !== f.pattern) return false;
@@ -92,24 +116,30 @@ export function DashboardPage() {
         });
 
         setSuggestions(filtered);
-        setPage(1);
-        if (forceShow || q.trim().length > 0 || f.type || f.variant || f.pattern || f.status || f.low) {
+        setVisibleCount(CHUNK_SIZE);
+        if (forceShow || cleanQuery.length > 0 || f.type || f.variant || f.pattern || f.status || f.low) {
           setResults(filtered);
           setHasSearched(true);
         } else {
           setResults([]);
           setHasSearched(false);
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.name === "AbortError") {
+          return;
+        }
         console.error("Search failed:", err);
       } finally {
-        setSearching(false);
+        if (activeAbortControllerRef.current === controller) {
+          setSearching(false);
+          activeAbortControllerRef.current = null;
+        }
       }
     },
     [hasInventoryAccess]
   );
 
-  // Debounced search when query changes
+  // Debounced search when query changes (350ms to protect API)
   useEffect(() => {
     if (!hasInventoryAccess) return;
     if (skipNextSearchRef.current) {
@@ -127,9 +157,9 @@ export function DashboardPage() {
         setSuggestions([]);
         setShowSuggestions(false);
       }
-    }, 250);
+    }, 350);
     return () => clearTimeout(timer);
-  }, [query, filters, doSearch]);
+  }, [query, filters, doSearch, hasInventoryAccess]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -200,7 +230,7 @@ export function DashboardPage() {
     setSelected(null);
     setSuggestions([]);
     setShowSuggestions(false);
-    setPage(1);
+    setVisibleCount(CHUNK_SIZE);
     inputRef.current?.focus();
   };
 
@@ -258,15 +288,22 @@ export function DashboardPage() {
     return copy;
   }, [filteredByStock, sortBy]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedResults.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const startIdx = (safePage - 1) * pageSize;
-  const pagedResults = sortedResults.slice(startIdx, startIdx + pageSize);
+  const pagedResults = useMemo(() => {
+    return sortedResults.slice(0, visibleCount);
+  }, [sortedResults, visibleCount]);
 
-  const changePage = (nextPage: number) => {
-    setPage(nextPage);
-    listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  const hasMore = visibleCount < sortedResults.length;
+
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount((prev) => Math.min(prev + CHUNK_SIZE, sortedResults.length));
+  }, [sortedResults.length]);
+
+  const { sentinelRef, showScrollTop, scrollToTop } = useInfiniteScroll({
+    hasMore,
+    isLoading: false,
+    onLoadMore: handleLoadMore,
+    rootMargin: "350px",
+  });
 
   if (!hasInventoryAccess) {
     return <AccessDenied fallbackTo={defaultRoute} />;
@@ -655,7 +692,9 @@ export function DashboardPage() {
                 </span>
                 {sortedResults.length > 0 && (
                   <span className="text-xs text-slate-500">
-                    Showing {startIdx + 1}–{Math.min(startIdx + pageSize, sortedResults.length)}
+                    {visibleCount < sortedResults.length
+                      ? `Showing ${Math.min(visibleCount, sortedResults.length)} of ${sortedResults.length}`
+                      : `Showing all ${sortedResults.length}`}
                   </span>
                 )}
               </div>
@@ -666,7 +705,7 @@ export function DashboardPage() {
                   type="button"
                   onClick={() => {
                     setStockTab("all");
-                    setPage(1);
+                    setVisibleCount(CHUNK_SIZE);
                   }}
                   className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer ${
                     stockTab === "all"
@@ -680,7 +719,7 @@ export function DashboardPage() {
                   type="button"
                   onClick={() => {
                     setStockTab("in");
-                    setPage(1);
+                    setVisibleCount(CHUNK_SIZE);
                   }}
                   className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer ${
                     stockTab === "in"
@@ -695,7 +734,7 @@ export function DashboardPage() {
                     type="button"
                     onClick={() => {
                       setStockTab("low");
-                      setPage(1);
+                      setVisibleCount(CHUNK_SIZE);
                     }}
                     className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer ${
                       stockTab === "low"
@@ -711,7 +750,7 @@ export function DashboardPage() {
                     type="button"
                     onClick={() => {
                       setStockTab("out");
-                      setPage(1);
+                      setVisibleCount(CHUNK_SIZE);
                     }}
                     className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer ${
                       stockTab === "out"
@@ -725,7 +764,7 @@ export function DashboardPage() {
               </div>
             </div>
 
-            {/* Right controls: Sort, Page size, View toggle */}
+            {/* Right controls: Sort, View toggle */}
             <div className="flex flex-wrap items-center gap-2">
               <label htmlFor="sortBy" className="sr-only">
                 Sort inventory
@@ -735,7 +774,7 @@ export function DashboardPage() {
                 value={sortBy}
                 onChange={(e) => {
                   setSortBy(e.target.value as SortKey);
-                  setPage(1);
+                  setVisibleCount(CHUNK_SIZE);
                 }}
                 className="select-badge h-9 rounded-lg border border-slate-200 bg-white pl-3 text-xs font-semibold text-slate-700 hover:border-slate-300 focus:border-red-500 focus:outline-none cursor-pointer"
               >
@@ -746,23 +785,6 @@ export function DashboardPage() {
                 <option value="stock-desc">Stock: High → Low</option>
                 {canSeePrice && <option value="price-asc">Price: Low → High</option>}
                 {canSeePrice && <option value="price-desc">Price: High → Low</option>}
-              </select>
-
-              <label htmlFor="pageSize" className="sr-only">
-                Items per page
-              </label>
-              <select
-                id="pageSize"
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="select-badge h-9 rounded-lg border border-slate-200 bg-white pl-3 text-xs font-semibold text-slate-700 hover:border-slate-300 focus:border-red-500 focus:outline-none cursor-pointer"
-              >
-                <option value={24}>24 / page</option>
-                <option value={48}>48 / page</option>
-                <option value={100}>100 / page</option>
               </select>
 
               {/* View toggle (desktop md+) */}
@@ -814,7 +836,7 @@ export function DashboardPage() {
                 type="button"
                 onClick={() => {
                   setStockTab("all");
-                  setPage(1);
+                  setVisibleCount(CHUNK_SIZE);
                 }}
                 className="btn-secondary mt-3 text-xs"
               >
@@ -1006,35 +1028,11 @@ export function DashboardPage() {
                 })}
               </div>
 
-              {/* Pagination Footer */}
-              {totalPages > 1 && (
-                <nav
-                  aria-label="Inventory pagination"
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-100/90 bg-white/95 px-4 py-3 text-sm shadow-xs"
-                >
-                  <p className="text-xs text-slate-600">
-                    Page <span className="font-semibold text-slate-900">{safePage}</span> of{" "}
-                    <span className="font-semibold text-slate-900">{totalPages}</span>
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={safePage <= 1}
-                      onClick={() => changePage(safePage - 1)}
-                      className="btn-secondary min-h-9 px-3 py-1.5 text-xs"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      type="button"
-                      disabled={safePage >= totalPages}
-                      onClick={() => changePage(safePage + 1)}
-                      className="btn-secondary min-h-9 px-3 py-1.5 text-xs"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </nav>
+              {/* Infinite Scroll Sentinel & End Status */}
+              <InfiniteScrollSentinel innerRef={sentinelRef} />
+              {hasMore && <InfiniteScrollSpinner label="Loading more stock..." />}
+              {!hasMore && sortedResults.length > 0 && (
+                <InfiniteScrollEnd count={sortedResults.length} label="SKUs" onScrollTop={scrollToTop} />
               )}
             </>
           )}
@@ -1051,6 +1049,8 @@ export function DashboardPage() {
           </button>
         </div>
       )}
+
+      <BackToTopButton visible={showScrollTop} onClick={scrollToTop} />
     </div>
   );
 }

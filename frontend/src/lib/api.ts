@@ -78,9 +78,30 @@ export const apiAuth = {
 
 // SKUs
 export const apiSkus = {
-  list: (q?: string) => {
-    const query = q ? `?q=${encodeURIComponent(q)}` : "";
-    return apiFetch<any[]>(`/skus${query}`);
+  list: (
+    q?: string,
+    options?: {
+      signal?: AbortSignal;
+      page?: number;
+      limit?: number;
+      type?: string;
+      variant?: string;
+      pattern?: string;
+      status?: string;
+      low?: boolean;
+    }
+  ) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (options?.page) params.set("page", String(options.page));
+    if (options?.limit) params.set("limit", String(options.limit));
+    if (options?.type) params.set("type", options.type);
+    if (options?.variant) params.set("variant", options.variant);
+    if (options?.pattern) params.set("pattern", options.pattern);
+    if (options?.status) params.set("status", options.status);
+    if (options?.low) params.set("low", "true");
+    const qs = params.toString();
+    return apiFetch<any>(`/skus${qs ? `?${qs}` : ""}`, { signal: options?.signal });
   },
   get: (id: string) => apiFetch<any>(`/skus/${id}`),
   facets: () => apiFetch<{ types: string[]; variants: string[]; colours: string[]; patterns: string[] }>("/skus/facets"),

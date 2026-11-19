@@ -131,6 +131,7 @@ const skuSchema = new Schema<ISku>(
 
 skuSchema.index({ fabricType: 1, variant: 1 });
 skuSchema.index({ itemCode: 1 });
+skuSchema.index({ warehouse: 1, active: 1 });
 
 skuSchema.virtual("stockIns", {
   ref: "StockIn",
@@ -202,6 +203,7 @@ const stockInSchema = new Schema<IStockIn>(
 );
 
 stockInSchema.index({ skuId: 1, purchaseDate: 1 });
+stockInSchema.index({ voidedAt: 1, purchaseDate: -1, createdAt: -1 });
 
 stockInSchema.virtual("sku", {
   ref: "Sku",
@@ -250,6 +252,7 @@ const saleSchema = new Schema<ISale>(
 );
 
 saleSchema.index({ skuId: 1, saleDate: 1 });
+saleSchema.index({ voidedAt: 1, saleDate: -1, createdAt: -1 });
 
 saleSchema.virtual("sku", {
   ref: "Sku",

@@ -1,13 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { apiStock, apiSkus } from "@/lib/api";
 import { formatDate, formatMetres, formatPrice } from "@/lib/format";
 import { AccessDenied, EmptyState, PageHeader } from "@/components/ui";
-import { Pagination, VoidedBadge, QualityBadge } from "@/components/bits";
+import { VoidedBadge, QualityBadge } from "@/components/bits";
 import { TableSkeleton } from "@/components/TableSkeleton";
 import { VoidButton } from "@/components/VoidButton";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import {
+  InfiniteScrollSentinel,
+  InfiniteScrollSpinner,
+  InfiniteScrollEnd,
+  BackToTopButton,
+} from "@/components/InfiniteScroll";
 
 export function PurchasesPage() {
   const { can, defaultRoute } = useAuth();
@@ -20,7 +27,6 @@ export function PurchasesPage() {
 
   const [skus, setSkus] = useState<any[]>([]);
   const [filters, setFilters] = useState({ sku: "", supplier: "", quality: "", from: "", to: "" });
-  const [page, setPage] = useState(1);
   const [data, setData] = useState<{ rows: any[]; count: number; page: number; pages: number }>({
     rows: [],
     count: 0,
@@ -28,15 +34,23 @@ export function PurchasesPage() {
     pages: 1,
   });
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const isFetchingRef = useRef(false);
 
   useEffect(() => {
     if (!hasAccess) return;
     apiSkus.list().then(setSkus).catch(console.error);
   }, [hasAccess]);
 
-  const loadPurchases = (p = page, f = filters) => {
-    if (!hasAccess) return;
-    setLoading(true);
+  const loadPurchases = (p = 1, f = filters, append = false) => {
+    if (!hasAccess || isFetchingRef.current) return;
+    isFetchingRef.current = true;
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+
     apiStock
       .getPurchases({
         sku: f.sku || undefined,
@@ -46,14 +60,38 @@ export function PurchasesPage() {
         to: f.to || undefined,
         page: p,
       })
-      .then(setData)
+      .then((res) => {
+        setData((prev) => ({
+          ...res,
+          rows: append ? [...prev.rows, ...res.rows] : res.rows,
+        }));
+      })
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setLoadingMore(false);
+        isFetchingRef.current = false;
+      });
   };
 
   useEffect(() => {
-    loadPurchases(page, filters);
-  }, [page, hasAccess]);
+    loadPurchases(1, filters, false);
+  }, [hasAccess]);
+
+  const hasMore = data.page < data.pages;
+
+  const handleLoadMore = useCallback(() => {
+    if (data.page < data.pages && !isFetchingRef.current) {
+      loadPurchases(data.page + 1, filters, true);
+    }
+  }, [data.page, data.pages, filters, hasAccess]);
+
+  const { sentinelRef, showScrollTop, scrollToTop } = useInfiniteScroll({
+    hasMore,
+    isLoading: loading || loadingMore,
+    onLoadMore: handleLoadMore,
+    rootMargin: "300px",
+  });
 
   if (!hasAccess) {
     return <AccessDenied fallbackTo={defaultRoute} />;
@@ -61,15 +99,13 @@ export function PurchasesPage() {
 
   const handleFilterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setPage(1);
-    loadPurchases(1, filters);
+    loadPurchases(1, filters, false);
   };
 
   const handleReset = () => {
     const empty = { sku: "", supplier: "", quality: "", from: "", to: "" };
     setFilters(empty);
-    setPage(1);
-    loadPurchases(1, empty);
+    loadPurchases(1, empty, false);
   };
 
   const handleQualityChange = async (id: string, newStatus: "APPROVED" | "REJECTED" | "PENDING") => {
@@ -337,7 +373,13 @@ export function PurchasesPage() {
             })}
           </ul>
 
-          <Pagination page={data.page} pages={data.pages} onPageChange={setPage} />
+          <InfiniteScrollSentinel innerRef={sentinelRef} />
+          {loadingMore && <InfiniteScrollSpinner label="Loading more purchases..." />}
+          {!hasMore && data.rows.length > 0 && (
+            <InfiniteScrollEnd count={data.count} label="purchases" onScrollTop={scrollToTop} />
+          )}
+
+          <BackToTopButton visible={showScrollTop} onClick={scrollToTop} />
         </>
       )}
     </>

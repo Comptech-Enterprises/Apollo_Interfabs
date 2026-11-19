@@ -24,15 +24,20 @@ router.get("/", requirePermission("po.view"), async (req, res) => {
   }
 
   const [rows, count, users] = await Promise.all([
-    PurchaseOrder.find(filter).sort({ createdAt: -1 }).skip((page - 1) * PAGE).limit(PAGE),
+    PurchaseOrder.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * PAGE)
+      .limit(PAGE)
+      .lean(),
     PurchaseOrder.countDocuments(filter),
-    User.find().select("_id name"),
+    User.find().select("_id name").lean(),
   ]);
 
-  const userMap = new Map(users.map((u) => [String(u._id), u.name]));
+  const userMap = new Map(users.map((u: any) => [String(u._id), u.name]));
   res.json({
-    rows: rows.map((r) => ({
-      ...r.toJSON(),
+    rows: rows.map((r: any) => ({
+      ...r,
+      id: r._id?.toString() || r.id,
       createdByName: userMap.get(String(r.createdById)) ?? "Unknown",
       reviewedByName: r.reviewedById ? (userMap.get(String(r.reviewedById)) ?? "Unknown") : null,
     })),
